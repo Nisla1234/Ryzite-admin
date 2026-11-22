@@ -26,7 +26,8 @@ async function timedFetch(url: string, init: RequestInit = {}, ms = 8000) {
 }
 
 async function checkSanity(): Promise<IntegrationCheck> {
-  const missing = missingOf(["SANITY_API_TOKEN"]);
+  const token = getRuntimeSecret("SANITY_API_TOKEN");
+  const missing = token ? [] : ["SANITY_API_TOKEN"];
   const setup = [
     "Use the existing Sanity project hnm8jy5w. Create or use a development dataset for migration testing; keep production unchanged until review is complete.",
     "Set SANITY_DATASET=development and create a Sanity Editor token named “RYZITE Control Centre” in the existing project.",
@@ -39,6 +40,7 @@ async function checkSanity(): Promise<IntegrationCheck> {
     );
     const res = await timedFetch(
       `https://${SANITY_PROJECT}.api.sanity.io/v2024-01-01/data/query/${SANITY_DATASET}?query=${q}`,
+      { headers: token ? { Authorization: `Bearer ${token}` } : {} },
     );
     if (!res.ok) {
       return {
@@ -63,9 +65,9 @@ async function checkSanity(): Promise<IntegrationCheck> {
       capabilities: [
         { label: "Read published content", ok: true },
         {
-          label: "Save drafts and publish",
+          label: "Sanity server token configured",
           ok: canWrite,
-          ...(canWrite ? {} : { detail: "Needs SANITY_API_TOKEN configured server-side." }),
+          ...(canWrite ? { detail: "Token is available for the next CMS integration phase; the admin editing interface is not enabled yet." } : { detail: "Needs SANITY_API_TOKEN configured server-side." }),
         },
       ],
       missing,
@@ -91,7 +93,7 @@ async function checkGithub(): Promise<IntegrationCheck> {
   const setup = [
     "Live website repo: Nisla1234/ryzite-unified-platform (main). Control Centre repo: Nisla1234/Ryzite-admin.",
     "Public repository metadata can be read directly via the GitHub REST API without extra secrets.",
-    "Configure GITHUB_TOKEN as a Cloudflare Worker secret with Contents: read/write and Pull requests: read/write on the website repository to enable reviewed content publishing.",
+    "The live website repository is public, so read-only status checks work without a token. If rate limits require it, configure a narrowly scoped read-only GITHUB_TOKEN; do not grant write access for CMS editing.",
   ];
   try {
     const res = await timedFetch(`https://api.github.com/repos/${GITHUB_REPO}`, {
@@ -109,11 +111,9 @@ async function checkGithub(): Promise<IntegrationCheck> {
         capabilities: [
           { label: "Read repository metadata", ok: true },
           {
-            label: "Propose changes as a pull request",
-            ok: Boolean(token),
-            ...(token
-              ? {}
-              : { detail: "Optional GITHUB_TOKEN not configured; manual git/GitHub sync active." }),
+            label: "Read website repository metadata",
+            ok: true,
+            ...(token ? {} : { detail: "Public repository; no token required for basic reads." }),
           },
         ],
         missing: [],
