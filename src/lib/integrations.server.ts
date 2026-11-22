@@ -3,7 +3,7 @@ import type { IntegrationCheck } from "./integrations";
 import { getD1Database, getRuntimeSecret } from "./runtime-env.server";
 
 const GITHUB_REPO = "Nisla1234/ryzite-unified-platform";
-const LIVE_URL = "https://ryzite-website.thulirkalcom.workers.dev/";
+const LIVE_URL = "https://ryzite-unified-platform.ryziteonline.workers.dev/";
 const UA = "RYZITE-Control-Centre/1.0 (integration check)";
 
 const has = (name: string) => Boolean(getRuntimeSecret(name));
