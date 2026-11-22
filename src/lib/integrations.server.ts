@@ -25,82 +25,59 @@ async function timedFetch(url: string, init: RequestInit = {}, ms = 8000) {
   }
 }
 
-async function checkWebsiteContent(): Promise<IntegrationCheck> {
-  const token = getRuntimeSecret("GITHUB_TOKEN");
+async function checkSanity(): Promise<IntegrationCheck> {
+  const missing = missingOf(["SANITY_API_TOKEN"]);
   const setup = [
-    "The live website content is source-controlled in Nisla1234/ryzite-unified-platform, branch main.",
-    "Content files are read from src/data and media inventory is read from public/assets.",
-    "Content changes can be proposed as draft pull requests when GITHUB_TOKEN has Contents: write and Pull requests: write on the website repository.",
-    "The repository is public, so no token is required for basic reads. A narrowly scoped GITHUB_TOKEN can improve rate limits and enable a future PR workflow.",
+    "In sanity.io/manage -> project hnm8jy5w -> API -> Tokens, create an Editor token named “RYZITE Control Centre”.",
+    "Configure SANITY_API_TOKEN as a server-side secret in Cloudflare Workers (it never reaches the browser).",
+    "Add the Control Centre origin under Sanity API -> CORS origins.",
   ];
   try {
+    const q = encodeURIComponent(
+      '{"docs": count(*[!(_id in path("_.**")) && !(_type match "sanity.*")]), "assets": count(*[_type == "sanity.imageAsset"])}',
+    );
     const res = await timedFetch(
-      `https://api.github.com/repos/${GITHUB_REPO}/git/trees/main?recursive=1`,
-      {
-        headers: {
-          Accept: "application/vnd.github+json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-      },
-      12000,
+      `https://${SANITY_PROJECT}.api.sanity.io/v2024-01-01/data/query/${SANITY_DATASET}?query=${q}`,
     );
     if (!res.ok) {
       return {
-        key: "content",
+        key: "sanity",
         state: "disconnected",
-        summary: `GitHub content inventory returned HTTP ${res.status}.`,
-        capabilities: [{ label: "Read website content source", ok: false }],
-        missing: [],
+        summary: `Sanity answered with HTTP ${res.status}.`,
+        capabilities: [{ label: "Read published content", ok: false }],
+        missing,
         error: (await res.text()).slice(0, 200),
         setup,
         checkedAt: now(),
       };
     }
-    const body = (await res.json()) as {
-      truncated?: boolean;
-      tree?: Array<{ path: string; type: string; size?: number }>;
-    };
-    const entries = (body.tree ?? []).filter((entry) => entry.type === "blob");
-    const contentFiles = entries.filter(
-      (entry) =>
-        entry.path.startsWith("src/data/") &&
-        /\.(ts|tsx|js|json|md)$/i.test(entry.path) &&
-        !/\.(test|spec)\./i.test(entry.path),
-    );
-    const mediaFiles = entries.filter(
-      (entry) =>
-        entry.path.startsWith("public/assets/") &&
-        /\.(png|jpe?g|webp|avif|svg|gif|mp4|webm)$/i.test(entry.path),
-    );
-    const ok = contentFiles.length > 0;
+    const body = (await res.json()) as { result?: { docs?: number; assets?: number } };
+    const docs = body.result?.docs ?? 0;
+    const assets = body.result?.assets ?? 0;
+    const canWrite = missing.length === 0;
     return {
-      key: "content",
-      state: ok ? "connected" : "configuration_required",
-      summary: ok
-        ? `Read access verified for ${GITHUB_REPO}: ${contentFiles.length} content source files and ${mediaFiles.length} public media assets on main.${body.truncated ? " GitHub marked the inventory as truncated." : ""}`
-        : "The repository responded, but no supported content source files were found under src/data.",
+      key: "sanity",
+      state: canWrite ? "connected" : "configuration_required",
+      summary: `Project ${SANITY_PROJECT} / ${SANITY_DATASET} is reachable: ${docs} content document${docs === 1 ? "" : "s"}, ${assets} image${assets === 1 ? "" : "s"}.`,
       capabilities: [
-        { label: "Read website content source files", ok },
-        { label: "Inventory public media assets", ok: mediaFiles.length > 0 },
+        { label: "Read published content", ok: true },
         {
-          label: "Propose website content changes as a draft pull request",
-          ok: Boolean(token),
-          ...(!token
-            ? { detail: "Configure server-side GITHUB_TOKEN with Contents: write and Pull requests: write on the website repository." }
-            : {}),
+          label: "Save drafts and publish",
+          ok: canWrite,
+          ...(canWrite ? {} : { detail: "Needs SANITY_API_TOKEN configured server-side." }),
         },
       ],
-      missing: [],
+      missing,
       setup,
       checkedAt: now(),
     };
   } catch (e) {
     return {
-      key: "content",
+      key: "sanity",
       state: "disconnected",
-      summary: "The live website content repository could not be reached.",
-      capabilities: [{ label: "Read website content source", ok: false }],
-      missing: [],
+      summary: "Sanity could not be reached.",
+      capabilities: [{ label: "Read published content", ok: false }],
+      missing,
       error: errText(e),
       setup,
       checkedAt: now(),
@@ -336,8 +313,8 @@ function checkEmail(): IntegrationCheck {
 
 export async function runCheck(key: IntegrationKey): Promise<IntegrationCheck> {
   switch (key) {
-    case "content":
-      return checkWebsiteContent();
+    case "sanity":
+      return checkSanity();
     case "github":
       return checkGithub();
     case "ga4":
