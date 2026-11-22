@@ -30,7 +30,7 @@ async function checkWebsiteContent(): Promise<IntegrationCheck> {
   const setup = [
     "The live website content is source-controlled in Nisla1234/ryzite-unified-platform, branch main.",
     "Content files are read from src/data and media inventory is read from public/assets.",
-    "This connection is read-only. Content editing and publishing will require a reviewed GitHub write/PR workflow.",
+    "Content changes can be proposed as draft pull requests when GITHUB_TOKEN has Contents: write and Pull requests: write on the website repository.",
     "The repository is public, so no token is required for basic reads. A narrowly scoped GITHUB_TOKEN can improve rate limits and enable a future PR workflow.",
   ];
   try {
@@ -83,9 +83,11 @@ async function checkWebsiteContent(): Promise<IntegrationCheck> {
         { label: "Read website content source files", ok },
         { label: "Inventory public media assets", ok: mediaFiles.length > 0 },
         {
-          label: "Edit and publish website content",
-          ok: false,
-          detail: "The Control Centre currently provides a read-only source browser; publishing is not enabled.",
+          label: "Propose website content changes as a draft pull request",
+          ok: Boolean(token),
+          ...(!token
+            ? { detail: "Configure server-side GITHUB_TOKEN with Contents: write and Pull requests: write on the website repository." }
+            : {}),
         },
       ],
       missing: [],
@@ -111,7 +113,7 @@ async function checkGithub(): Promise<IntegrationCheck> {
   const setup = [
     "Live website repo: Nisla1234/ryzite-unified-platform (main). Control Centre repo: Nisla1234/Ryzite-admin.",
     "Public repository metadata can be read directly via the GitHub REST API without extra secrets.",
-    "Optional: configure a scoped GITHUB_TOKEN secret in Cloudflare Workers only if you enable private-repo reads or pull-request automation later.",
+    "Configure GITHUB_TOKEN as a Cloudflare Worker secret with Contents: read/write and Pull requests: read/write on the website repository to enable reviewed content publishing.",
   ];
   try {
     const res = await timedFetch(`https://api.github.com/repos/${GITHUB_REPO}`, {
