@@ -1,7 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireAdminAuth } from "./auth-middleware";
-import { can } from "./permissions";
+import { can, type Role } from "./permissions";
+import { getRuntimeSecret } from "./runtime-env.server";
 
 const REPOSITORY = "Nisla1234/ryzite-unified-platform";
 const BRANCH = "main";
@@ -9,7 +10,7 @@ const API = "https://api.github.com";
 const MAX_FILE_BYTES = 512 * 1024;
 
 function githubHeaders() {
-  const token = process.env.GITHUB_TOKEN;
+  const token = getRuntimeSecret("GITHUB_TOKEN");
   return {
     Accept: "application/vnd.github+json",
     "X-GitHub-Api-Version": "2022-11-28",
@@ -33,8 +34,8 @@ async function githubGet(url: string) {
   return response;
 }
 
-function assertContentPermission(roles: string[]) {
-  if (!can(roles as never[], "content.edit")) {
+function assertContentPermission(roles: Role[]) {
+  if (!can(roles, "content.edit")) {
     throw new Error("Forbidden: website content access is not permitted for this account.");
   }
 }
