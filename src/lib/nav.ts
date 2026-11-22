@@ -30,7 +30,8 @@ export type LiveRoute =
   | "/admin/access-requests"
   | "/admin/logs"
   | "/admin/integrations"
-  | "/admin/profile";
+  | "/admin/profile"
+  | "/admin/media";
 
 export interface NavItem {
   key: string;
@@ -86,7 +87,7 @@ export const NAV: NavGroup[] = [
       site("team", "Team Members", Users, "Team members, roles, biographies, photos and social links."),
       site("articles", "Articles & Blog", Newspaper, "Rich-text articles with authors, categories, tags and social metadata."),
       site("testimonials", "Testimonials", MessageSquareQuote, "Verified client testimonials with company, role and display order."),
-      site("media", "Media Library", Image, "Sanity media-library management will be enabled after the staged content migration.", { permission: "media.manage", needs: ["sanity", "github"] }),
+      { ...site("media", "Media Library", Image, "Browse the original media assets used by the live website, with previews, search, filters and live URLs.", { permission: "media.manage", needs: ["github"] }), live: "/admin/media" },
       site("navigation", "Navigation & Footer", Menu, "Header and footer menus, company details, contact information and social links.", { combines: ["Navigation & Menus", "Site Settings"] }),
       site("enquiries", "Enquiries & Contact Messages", Mail, "Messages sent through the website's contact and quote forms.", { needs: ["email"] }),
       { key: "preview", label: "Live Website Preview", icon: Eye, summary: "See the live website on desktop, tablet and mobile without leaving the Control Centre.", permission: "dashboard.view", phase: 2, live: "/admin/preview" },
