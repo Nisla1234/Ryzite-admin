@@ -44,7 +44,7 @@ const LOCAL_STORE_KEY = "__RYZITE_LOCAL_DB_STORE__";
 const PRIMARY_ADMIN_PASSWORD_HASH =
   "scrypt:85741a762e932a8775248aa62e6b0b7e:d7e5dfd1be4c12ce5f456f813053edbc40fb2b611044028ef9e2af082d1a4b1d154a28cbe182f5dbeccad463472761625ea5d31fd900c653489d313cedf32928";
 const SECONDARY_EDITOR_PASSWORD_HASH =
-  "scrypt:9e4314c629bd7e03dd4eb86ae88f1761:45a14d0082ba7002736679cb641c310051791e56e9e2bdd67e604b53da5dbe3a8f7e25cb44b6be9e8bb11765690e1a7b1fe0da61f706736d3752c0920aa20df4";
+  "scrypt:c44772a5aa3ac088a345b7c1891ab290:9b09da869e18ffba8904e42fb08462419f6916f9c71390c24ae225b963ee04f4dd17dfa19fa584b8cfba98b6c1854b0909f56bd3679d9f1ff24e4042d781b33e";
 
 function createInitialLocalStore(): LocalStore {
   const now = new Date();
@@ -63,7 +63,7 @@ function createInitialLocalStore(): LocalStore {
       },
       {
         id: editorId,
-        email: "editor@ryzite.com",
+        email: "nislaryzite@gmail.com",
         password_hash: SECONDARY_EDITOR_PASSWORD_HASH,
         banned_until: null,
         created_at: hoursAgo(120),
@@ -85,7 +85,7 @@ function createInitialLocalStore(): LocalStore {
         id: editorId,
         username: "editor",
         full_name: "Priya Nair",
-        email: "editor@ryzite.com",
+        email: "nislaryzite@gmail.com",
         job_title: "Content Lead",
         avatar_url: null,
         last_sign_in_at: hoursAgo(18),
