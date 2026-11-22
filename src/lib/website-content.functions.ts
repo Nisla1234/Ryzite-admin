@@ -53,8 +53,13 @@ export const getWebsiteContentIndex = createServerFn({ method: "GET" })
     };
     const entries = (body.tree ?? []).filter((entry) => {
       if (entry.type !== "blob") return false;
-      if (entry.path.startsWith("src/data/")) {
-        return /\.(ts|tsx|js|json|md)$/i.test(entry.path) && !/\.(test|spec)\./i.test(entry.path);
+      if (
+        entry.path.startsWith("src/data/") ||
+        entry.path.startsWith("src/pages/") ||
+        entry.path.startsWith("src/components/sections/") ||
+        entry.path.startsWith("src/layouts/")
+      ) {
+        return /\.(astro|ts|tsx|js|json|md)$/i.test(entry.path) && !/\.(test|spec)\./i.test(entry.path);
       }
       if (entry.path.startsWith("public/assets/")) {
         return /\.(png|jpe?g|webp|avif|svg|gif|mp4|webm)$/i.test(entry.path);
@@ -66,7 +71,7 @@ export const getWebsiteContentIndex = createServerFn({ method: "GET" })
       branch: BRANCH,
       truncated: body.truncated === true,
       contentFiles: entries
-        .filter((entry) => entry.path.startsWith("src/data/"))
+        .filter((entry) => (entry.path.startsWith("src/data/") || entry.path.startsWith("src/pages/") || entry.path.startsWith("src/components/sections/") || entry.path.startsWith("src/layouts/")))
         .map(({ path, size, sha }) => ({ path, size: size ?? 0, sha })),
       mediaFiles: entries
         .filter((entry) => entry.path.startsWith("public/assets/"))
@@ -83,9 +88,14 @@ export const getWebsiteContentFile = createServerFn({ method: "GET" })
   .handler(async ({ data, context }) => {
     assertContentPermission(context.roles);
     if (
-      !data.path.startsWith("src/data/") ||
+      !(
+        data.path.startsWith("src/data/") ||
+        data.path.startsWith("src/pages/") ||
+        data.path.startsWith("src/components/sections/") ||
+        data.path.startsWith("src/layouts/")
+      ) ||
       data.path.split("/").some((part) => part === ".." || part === "") ||
-      !/\.(ts|tsx|js|json|md)$/i.test(data.path)
+      !/\.(astro|ts|tsx|js|json|md)$/i.test(data.path)
     ) {
       throw new Error("Only website content source files can be opened here.");
     }
