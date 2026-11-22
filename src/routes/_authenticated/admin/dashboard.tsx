@@ -323,7 +323,7 @@ function Dashboard() {
             <ul className="space-y-2.5 text-sm">
               {[
                 { done: true, t: "Secure sign-in, roles and audit logs" },
-                { done: false, t: "Connect Sanity editing and verify draft/publish permissions" },
+                { done: false, t: "Connect a reviewed GitHub content publishing workflow" },
                 { done: false, t: "Run a fresh SEO audit and review verified findings" },
                 { done: false, t: "Configure GA4 reporting and verify the property" },
                 { done: false, t: "Enable and run a PageSpeed audit" },
