@@ -3,7 +3,7 @@ import { z } from "zod";
 import { requireAdminAuth } from "./auth-middleware";
 import { INTEGRATION_ORDER } from "./integrations";
 
-const keyEnum = z.enum(["sanity", "ga4", "pagespeed", "ai", "email", "github", "cloudflare"]);
+const keyEnum = z.enum(["content", "ga4", "pagespeed", "ai", "email", "github", "cloudflare"]);
 
 /** Current status of every service. Any signed-in administrator may read it; no secret values are returned. */
 export const getIntegrationStatus = createServerFn({ method: "GET" })

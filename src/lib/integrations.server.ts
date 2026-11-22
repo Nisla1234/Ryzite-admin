@@ -2,8 +2,6 @@ import type { IntegrationKey } from "./nav";
 import type { IntegrationCheck } from "./integrations";
 import { getD1Database, getRuntimeSecret } from "./runtime-env.server";
 
-const SANITY_PROJECT = "hnm8jy5w";
-const SANITY_DATASET = "production";
 const GITHUB_REPO = "Nisla1234/ryzite-unified-platform";
 const LIVE_URL = "https://ryzite-website.thulirkalcom.workers.dev/";
 const UA = "RYZITE-Control-Centre/1.0 (integration check)";
@@ -27,62 +25,80 @@ async function timedFetch(url: string, init: RequestInit = {}, ms = 8000) {
   }
 }
 
-async function checkSanity(): Promise<IntegrationCheck> {
-  const token = getRuntimeSecret("SANITY_API_TOKEN");
-  const missing = missingOf(["SANITY_API_TOKEN"]);
+async function checkWebsiteContent(): Promise<IntegrationCheck> {
+  const token = getRuntimeSecret("GITHUB_TOKEN");
   const setup = [
-    "In sanity.io/manage -> project hnm8jy5w -> API -> Tokens, create an Editor token named “RYZITE Control Centre”.",
-    "Configure SANITY_API_TOKEN as a server-side secret in Cloudflare Workers (it never reaches the browser).",
-    "Add the Control Centre origin under Sanity API -> CORS origins.",
+    "The live website content is source-controlled in Nisla1234/ryzite-unified-platform, branch main.",
+    "Content files are read from src/data and media inventory is read from public/assets.",
+    "This connection is read-only. Content editing and publishing will require a reviewed GitHub write/PR workflow.",
+    "The repository is public, so no token is required for basic reads. A narrowly scoped GITHUB_TOKEN can improve rate limits and enable a future PR workflow.",
   ];
   try {
-    const q = encodeURIComponent(
-      '{"docs": count(*[!(_id in path("_.**")) && !(_type match "sanity.*")]), "assets": count(*[_type == "sanity.imageAsset"])}',
-    );
     const res = await timedFetch(
-      `https://${SANITY_PROJECT}.api.sanity.io/v2024-01-01/data/query/${SANITY_DATASET}?query=${q}`,
-      token ? { headers: { Authorization: `Bearer ${token}` } } : {},
+      `https://api.github.com/repos/${GITHUB_REPO}/git/trees/main?recursive=1`,
+      {
+        headers: {
+          Accept: "application/vnd.github+json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      },
+      12000,
     );
     if (!res.ok) {
       return {
-        key: "sanity",
+        key: "content",
         state: "disconnected",
-        summary: `Sanity answered with HTTP ${res.status}.`,
-        capabilities: [{ label: "Read published content", ok: false }],
-        missing,
+        summary: `GitHub content inventory returned HTTP ${res.status}.`,
+        capabilities: [{ label: "Read website content source", ok: false }],
+        missing: [],
         error: (await res.text()).slice(0, 200),
         setup,
         checkedAt: now(),
       };
     }
-    const body = (await res.json()) as { result?: { docs?: number; assets?: number } };
-    const docs = body.result?.docs ?? 0;
-    const assets = body.result?.assets ?? 0;
+    const body = (await res.json()) as {
+      truncated?: boolean;
+      tree?: Array<{ path: string; type: string; size?: number }>;
+    };
+    const entries = (body.tree ?? []).filter((entry) => entry.type === "blob");
+    const contentFiles = entries.filter(
+      (entry) =>
+        entry.path.startsWith("src/data/") &&
+        /\.(ts|tsx|js|json|md)$/i.test(entry.path) &&
+        !/\.(test|spec)\./i.test(entry.path),
+    );
+    const mediaFiles = entries.filter(
+      (entry) =>
+        entry.path.startsWith("public/assets/") &&
+        /\.(png|jpe?g|webp|avif|svg|gif|mp4|webm)$/i.test(entry.path),
+    );
+    const ok = contentFiles.length > 0;
     return {
-      key: "sanity",
-      state: token ? "connected" : "configuration_required",
-      summary: token
-        ? `Authenticated read access verified for ${SANITY_PROJECT} / ${SANITY_DATASET}: ${docs} content document${docs === 1 ? "" : "s"}, ${assets} image${assets === 1 ? "" : "s"}.`
-        : `The public dataset ${SANITY_PROJECT} / ${SANITY_DATASET} is readable: ${docs} content document${docs === 1 ? "" : "s"}, ${assets} image${assets === 1 ? "" : "s"}. Add a server-side token to enable authenticated CMS access.`,
+      key: "content",
+      state: ok ? "connected" : "configuration_required",
+      summary: ok
+        ? `Read access verified for ${GITHUB_REPO}: ${contentFiles.length} content source files and ${mediaFiles.length} public media assets on main.${body.truncated ? " GitHub marked the inventory as truncated." : ""}`
+        : "The repository responded, but no supported content source files were found under src/data.",
       capabilities: [
-        { label: "Read published content", ok: true },
+        { label: "Read website content source files", ok },
+        { label: "Inventory public media assets", ok: mediaFiles.length > 0 },
         {
-          label: "Create drafts and publish content",
+          label: "Edit and publish website content",
           ok: false,
-          detail: "Write access has not been tested, and CMS editing/publishing screens are not implemented yet.",
+          detail: "The Control Centre currently provides a read-only source browser; publishing is not enabled.",
         },
       ],
-      missing,
+      missing: [],
       setup,
       checkedAt: now(),
     };
   } catch (e) {
     return {
-      key: "sanity",
+      key: "content",
       state: "disconnected",
-      summary: "Sanity could not be reached.",
-      capabilities: [{ label: "Read published content", ok: false }],
-      missing,
+      summary: "The live website content repository could not be reached.",
+      capabilities: [{ label: "Read website content source", ok: false }],
+      missing: [],
       error: errText(e),
       setup,
       checkedAt: now(),
@@ -93,7 +109,7 @@ async function checkSanity(): Promise<IntegrationCheck> {
 async function checkGithub(): Promise<IntegrationCheck> {
   const token = getRuntimeSecret("GITHUB_TOKEN");
   const setup = [
-    "Live website repo: Nisla1234/ryzite-unified-platform. Control Centre repo: Nisla1234/snap-built-web-worlds (branch chore/ryzite-d1-migration).",
+    "Live website repo: Nisla1234/ryzite-unified-platform (main). Control Centre repo: Nisla1234/Ryzite-admin.",
     "Public repository metadata can be read directly via the GitHub REST API without extra secrets.",
     "Optional: configure a scoped GITHUB_TOKEN secret in Cloudflare Workers only if you enable private-repo reads or pull-request automation later.",
   ];
@@ -111,7 +127,7 @@ async function checkGithub(): Promise<IntegrationCheck> {
         state: "connected",
         summary: `GitHub repository ${GITHUB_REPO} is reachable (default branch ${repo.default_branch ?? "main"}).`,
         capabilities: [
-          { label: "Read repository metadata and files", ok: true },
+          { label: "Read repository metadata", ok: true },
           {
             label: "Propose changes as a pull request",
             ok: Boolean(token),
@@ -318,8 +334,8 @@ function checkEmail(): IntegrationCheck {
 
 export async function runCheck(key: IntegrationKey): Promise<IntegrationCheck> {
   switch (key) {
-    case "sanity":
-      return checkSanity();
+    case "content":
+      return checkWebsiteContent();
     case "github":
       return checkGithub();
     case "ga4":
