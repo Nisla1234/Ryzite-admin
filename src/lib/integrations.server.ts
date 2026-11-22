@@ -127,7 +127,7 @@ async function checkGithub(): Promise<IntegrationCheck> {
         state: "connected",
         summary: `GitHub repository ${GITHUB_REPO} is reachable (default branch ${repo.default_branch ?? "main"}).`,
         capabilities: [
-          { label: "Read repository metadata and files", ok: true },
+          { label: "Read repository metadata", ok: true },
           {
             label: "Propose changes as a pull request",
             ok: Boolean(token),
