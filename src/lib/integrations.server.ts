@@ -28,6 +28,7 @@ async function timedFetch(url: string, init: RequestInit = {}, ms = 8000) {
 }
 
 async function checkSanity(): Promise<IntegrationCheck> {
+  const token = getRuntimeSecret("SANITY_API_TOKEN");
   const missing = missingOf(["SANITY_API_TOKEN"]);
   const setup = [
     "In sanity.io/manage -> project hnm8jy5w -> API -> Tokens, create an Editor token named “RYZITE Control Centre”.",
@@ -40,6 +41,7 @@ async function checkSanity(): Promise<IntegrationCheck> {
     );
     const res = await timedFetch(
       `https://${SANITY_PROJECT}.api.sanity.io/v2024-01-01/data/query/${SANITY_DATASET}?query=${q}`,
+      token ? { headers: { Authorization: `Bearer ${token}` } } : {},
     );
     if (!res.ok) {
       return {
@@ -56,17 +58,18 @@ async function checkSanity(): Promise<IntegrationCheck> {
     const body = (await res.json()) as { result?: { docs?: number; assets?: number } };
     const docs = body.result?.docs ?? 0;
     const assets = body.result?.assets ?? 0;
-    const canWrite = missing.length === 0;
     return {
       key: "sanity",
-      state: canWrite ? "connected" : "configuration_required",
-      summary: `Project ${SANITY_PROJECT} / ${SANITY_DATASET} is reachable: ${docs} content document${docs === 1 ? "" : "s"}, ${assets} image${assets === 1 ? "" : "s"}.`,
+      state: token ? "connected" : "configuration_required",
+      summary: token
+        ? `Authenticated read access verified for ${SANITY_PROJECT} / ${SANITY_DATASET}: ${docs} content document${docs === 1 ? "" : "s"}, ${assets} image${assets === 1 ? "" : "s"}.`
+        : `The public dataset ${SANITY_PROJECT} / ${SANITY_DATASET} is readable: ${docs} content document${docs === 1 ? "" : "s"}, ${assets} image${assets === 1 ? "" : "s"}. Add a server-side token to enable authenticated CMS access.`,
       capabilities: [
         { label: "Read published content", ok: true },
         {
-          label: "Save drafts and publish",
-          ok: canWrite,
-          ...(canWrite ? {} : { detail: "Needs SANITY_API_TOKEN configured server-side." }),
+          label: "Create drafts and publish content",
+          ok: false,
+          detail: "Write access has not been tested, and CMS editing/publishing screens are not implemented yet.",
         },
       ],
       missing,
@@ -189,35 +192,75 @@ function checkPagespeed(): IntegrationCheck {
 }
 
 async function checkCloudflare(): Promise<IntegrationCheck> {
+  const token = getRuntimeSecret("CLOUDFLARE_API_TOKEN");
+  const accountId = getRuntimeSecret("CLOUDFLARE_ACCOUNT_ID");
   const missing = missingOf(["CLOUDFLARE_API_TOKEN", "CLOUDFLARE_ACCOUNT_ID"]);
   const d1Bound = getD1Database() !== null;
   const setup = [
     "In Cloudflare -> My Profile -> API Tokens, create a scoped token for Workers & D1 automation.",
-    "Save CLOUDFLARE_API_TOKEN and a single CLOUDFLARE_ACCOUNT_ID for deployment automation.",
-    "Ensure the D1 binding `DB` is linked in wrangler.jsonc before deploying to Cloudflare Workers.",
+    "Save CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID as server-side secrets.",
+    "Ensure the D1 binding DB is linked in wrangler.jsonc before deploying to Cloudflare Workers.",
   ];
   const started = Date.now();
   try {
     const res = await timedFetch(LIVE_URL, { redirect: "manual" });
     const ms = Date.now() - started;
     const up = res.status >= 200 && res.status < 400;
+
+    let tokenActive = false;
+    if (token) {
+      try {
+        const verify = await timedFetch("https://api.cloudflare.com/client/v4/user/tokens/verify", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (verify.ok) {
+          const body = (await verify.json()) as {
+            success?: boolean;
+            result?: { status?: string };
+          };
+          tokenActive = body.success === true && body.result?.status === "active";
+        }
+      } catch {
+        tokenActive = false;
+      }
+    }
+
+    const tokenInvalid = Boolean(token) && !tokenActive;
+    const state = !up || tokenInvalid
+      ? "disconnected"
+      : missing.length
+        ? "configuration_required"
+        : "connected";
+
     return {
       key: "cloudflare",
-      state: !up ? "disconnected" : missing.length ? "configuration_required" : "connected",
+      state,
       summary: up
-        ? `Live site answered in ${ms} ms (HTTP ${res.status}). ${d1Bound ? "Cloudflare D1 binding active." : "Using local Node dev store (D1 binding activates in Workers)."}`
+        ? `Live site answered in ${ms} ms (HTTP ${res.status}). ${tokenActive ? "Cloudflare API token is active." : token ? "Cloudflare API token could not be verified." : "Cloudflare API token is not configured."} ${d1Bound ? "D1 binding is available in this runtime." : "D1 binding is not available in this local runtime."}`
         : `The live website answered with HTTP ${res.status}.`,
       capabilities: [
         { label: "Live website responds", ok: up },
         {
-          label: "Cloudflare D1 database binding",
-          ok: d1Bound,
-          ...(d1Bound ? {} : { detail: "Active once deployed to Cloudflare Workers / Wrangler." }),
+          label: "Cloudflare API token is active",
+          ok: tokenActive,
+          ...(!tokenActive
+            ? { detail: token ? "Token verification failed." : "CLOUDFLARE_API_TOKEN is not configured." }
+            : {}),
         },
         {
-          label: "Read deployment history via API",
-          ok: missing.length === 0,
-          ...(missing.length ? { detail: "Needs Cloudflare deployment credentials." } : {}),
+          label: "Cloudflare account ID configured",
+          ok: Boolean(accountId),
+          ...(!accountId ? { detail: "CLOUDFLARE_ACCOUNT_ID is not configured." } : {}),
+        },
+        {
+          label: "D1 database binding",
+          ok: d1Bound,
+          ...(!d1Bound ? { detail: "The binding is available when running in the configured Cloudflare Workers environment." } : {}),
+        },
+        {
+          label: "Read deployment history",
+          ok: false,
+          detail: "Deployment history retrieval is not implemented yet.",
         },
       ],
       missing,
