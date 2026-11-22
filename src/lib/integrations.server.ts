@@ -28,8 +28,9 @@ async function timedFetch(url: string, init: RequestInit = {}, ms = 8000) {
 async function checkSanity(): Promise<IntegrationCheck> {
   const missing = missingOf(["SANITY_API_TOKEN"]);
   const setup = [
-    "In sanity.io/manage -> project hnm8jy5w -> API -> Tokens, create an Editor token named “RYZITE Control Centre”.",
-    "Configure SANITY_API_TOKEN as a server-side secret in Cloudflare Workers (it never reaches the browser).",
+    "Use the existing Sanity project hnm8jy5w. Create or use a development dataset for migration testing; keep production unchanged until review is complete.",
+    "Set SANITY_DATASET=development and create a Sanity Editor token named “RYZITE Control Centre” in the existing project.",
+    "Configure SANITY_API_TOKEN as a server-side Cloudflare Worker secret (never expose it in the browser).",
     "Add the Control Centre origin under Sanity API -> CORS origins.",
   ];
   try {
