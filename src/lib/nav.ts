@@ -8,12 +8,12 @@ import {
 } from "lucide-react";
 import type { Permission } from "./permissions";
 
-export const LIVE_SITE_URL = "https://ryzite-website.thulirkalcom.workers.dev/";
+export const LIVE_SITE_URL = "https://ryzite-unified-platform.ryziteonline.workers.dev/";
 
-export type IntegrationKey = "content" | "ga4" | "pagespeed" | "ai" | "email" | "github" | "cloudflare";
+export type IntegrationKey = "sanity" | "ga4" | "pagespeed" | "ai" | "email" | "github" | "cloudflare";
 
 export const INTEGRATION_LABELS: Record<IntegrationKey, string> = {
-  content: "Website content source (GitHub)",
+  sanity: "Sanity CMS",
   ga4: "Google Analytics 4",
   pagespeed: "Google PageSpeed Insights",
   ai: "AI provider",
@@ -30,7 +30,8 @@ export type LiveRoute =
   | "/admin/access-requests"
   | "/admin/logs"
   | "/admin/integrations"
-  | "/admin/profile";
+  | "/admin/profile"
+  | "/admin/media";
 
 export interface NavItem {
   key: string;
@@ -58,8 +59,8 @@ const mk = (defaults: Omit<Extra, "combines">) =>
     key, label, icon, summary, ...defaults, ...extra,
   });
 
-const site = mk({ permission: "content.edit", phase: 3, needs: ["content"] });
-const seo = mk({ permission: "seo.view", phase: 4, needs: ["content"] });
+const site = mk({ permission: "content.edit", phase: 3, needs: ["sanity"] });
+const seo = mk({ permission: "seo.view", phase: 4, needs: ["sanity"] });
 const ga = mk({ permission: "analytics.view", phase: 5, needs: ["ga4"] });
 const perf = mk({ permission: "performance.view", phase: 6, needs: ["pagespeed"] });
 const ai = mk({ permission: "ai.view", phase: 7, needs: ["ai", "ga4", "pagespeed"] });
@@ -80,13 +81,13 @@ export const NAV: NavGroup[] = [
     label: "Website Management",
     icon: PanelsTopLeft,
     items: [
-      site("pages", "Pages & Content", FileText, "Browse the live website page templates, section copy and multilingual content files from GitHub."),
+      site("pages", "Pages & Content", FileText, "Connect the existing Sanity CMS; full content editing screens are being integrated separately."),
       site("portfolio", "Portfolio / Projects", BriefcaseBusiness, "Approved case studies with galleries, technologies, links and SEO."),
       site("services", "Services & Solutions", Layers, "The marketing services and technology solutions: descriptions, features, benefits, FAQs and SEO.", { combines: ["Services", "Solutions"] }),
       site("team", "Team Members", Users, "Team members, roles, biographies, photos and social links."),
       site("articles", "Articles & Blog", Newspaper, "Rich-text articles with authors, categories, tags and social metadata."),
       site("testimonials", "Testimonials", MessageSquareQuote, "Verified client testimonials with company, role and display order."),
-      site("media", "Media Library", Image, "Browse image and video assets tracked in the live GitHub repository.", { permission: "media.manage", needs: ["content", "github"] }),
+      { ...site("media", "Media Library", Image, "Browse the original media assets used by the live website, with previews, search, filters and live URLs.", { permission: "media.manage", needs: ["github"] }), live: "/admin/media" },
       site("navigation", "Navigation & Footer", Menu, "Header and footer menus, company details, contact information and social links.", { combines: ["Navigation & Menus", "Site Settings"] }),
       site("enquiries", "Enquiries & Contact Messages", Mail, "Messages sent through the website's contact and quote forms.", { needs: ["email"] }),
       { key: "preview", label: "Live Website Preview", icon: Eye, summary: "See the live website on desktop, tablet and mobile without leaving the Control Centre.", permission: "dashboard.view", phase: 2, live: "/admin/preview" },
@@ -102,7 +103,7 @@ export const NAV: NavGroup[] = [
       seo("pages", "Page SEO Manager", FileSearch, "Every page's title, description, canonical URL and robots settings, with a live search preview.", { combines: ["Page-by-Page SEO", "Meta Titles & Descriptions"] }),
       seo("social", "Social & Open Graph", Share2, "Social share titles, descriptions and images."),
       seo("technical", "Technical SEO & Schema", Code2, "Headings, canonical URLs, broken links, indexing problems and structured data.", { combines: ["Technical SEO", "Structured Data"] }),
-      seo("suggestions", "AI SEO Recommendations", Lightbulb, "AI-suggested corrections: edit, apply to draft, publish or revert. Never published automatically.", { needs: ["content", "ai"], combines: ["SEO Suggestions", "AI SEO Recommendations"] }),
+      seo("suggestions", "AI SEO Recommendations", Lightbulb, "AI-suggested corrections: edit, apply to draft, publish or revert. Never published automatically.", { needs: ["sanity", "ai"], combines: ["SEO Suggestions", "AI SEO Recommendations"] }),
       seo("issues", "SEO Issues & Corrections", ListChecks, "Tracked issues with priority, status and decision history."),
       seo("sitemap", "Sitemap & Robots.txt", Map, "Sitemap generation and robots directives."),
     ],
