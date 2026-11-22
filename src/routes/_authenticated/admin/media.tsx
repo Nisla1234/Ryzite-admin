@@ -37,7 +37,7 @@ function MediaLibrary() {
     staleTime: 60_000,
   });
   const [search, setSearch] = useState("");
-  const [kind, setKind] = useState<Kind>("all");
+  const [kind, setKind] = useState<Kind>("image");
   const [folder, setFolder] = useState("all");
   const [layout, setLayout] = useState<"grid" | "list">("grid");
   const [selected, setSelected] = useState<string | null>(null);
@@ -149,7 +149,7 @@ function MediaLibrary() {
                   ? "group overflow-hidden rounded-xl border bg-card text-left transition hover:border-primary/50 hover:shadow-md"
                   : "flex w-full items-center gap-4 rounded-xl border bg-card p-3 text-left transition hover:border-primary/50"}>
                   <div className={layout === "grid" ? "flex aspect-[16/10] items-center justify-center overflow-hidden bg-muted" : "flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-muted"}>
-                    {file.kind === "image" ? <img src={file.url} alt={file.name} loading="lazy" className="size-full object-contain" /> : file.kind === "video" ? <Film className="size-10 text-muted-foreground" /> : <File className="size-10 text-muted-foreground" />}
+                    {file.kind === "image" ? <img src={file.url} alt={file.name} loading="lazy" className="size-full object-cover transition-transform duration-300 group-hover:scale-[1.03]" onError={(event) => { event.currentTarget.style.display = "none"; }} /> : file.kind === "video" ? <Film className="size-10 text-muted-foreground" /> : <File className="size-10 text-muted-foreground" />}
                   </div>
                   <div className={layout === "grid" ? "min-w-0 space-y-1.5 p-3" : "min-w-0 flex-1"}>
                     <p className="truncate text-sm font-medium">{file.name}</p>
@@ -174,7 +174,7 @@ function MediaLibrary() {
               <Button size="sm" variant="ghost" onClick={() => setSelected(null)}>Close</Button>
             </div>
             <div className="mb-4 flex max-h-80 items-center justify-center overflow-hidden rounded-xl bg-muted p-3">
-              {active.kind === "image" ? <img src={active.url} alt={active.name} className="max-h-72 max-w-full object-contain" /> : active.kind === "video" ? <video src={active.url} controls className="max-h-72 max-w-full" /> : <File className="size-16 text-muted-foreground" />}
+              {active.kind === "image" ? <img src={active.url} alt={active.name} className="max-h-72 max-w-full object-contain" onError={(event) => { event.currentTarget.style.display = "none"; }} /> : active.kind === "video" ? <video src={active.url} controls className="max-h-72 max-w-full" /> : <File className="size-16 text-muted-foreground" />}
             </div>
             <div className="grid gap-3 text-sm sm:grid-cols-2">
               <Detail label="Folder" value={active.folder} />
