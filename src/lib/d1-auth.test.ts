@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { randomBytes } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
