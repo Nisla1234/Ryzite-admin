@@ -59,7 +59,7 @@ const mk = (defaults: Omit<Extra, "combines">) =>
   });
 
 const site = mk({ permission: "content.edit", phase: 3, needs: ["content"] });
-const seo = mk({ permission: "seo.view", phase: 4, needs: ["sanity"] });
+const seo = mk({ permission: "seo.view", phase: 4, needs: ["content"] });
 const ga = mk({ permission: "analytics.view", phase: 5, needs: ["ga4"] });
 const perf = mk({ permission: "performance.view", phase: 6, needs: ["pagespeed"] });
 const ai = mk({ permission: "ai.view", phase: 7, needs: ["ai", "ga4", "pagespeed"] });
@@ -140,7 +140,7 @@ export const NAV: NavGroup[] = [
       ai("daily-report", "Daily AI Reports", Newspaper, "Daily summary grounded in connected data, including what changed in traffic and why.", { combines: ["AI Daily Report", "Traffic Insights"] }),
       ai("health", "Website Health Analysis", Pulse, "Combined GA4, PageSpeed, SEO and deployment health."),
       ai("tasks", "Priority Tasks", ClipboardList, "Tracked AI tasks with status and completion history."),
-      ai("content", "AI Content Suggestions", Lightbulb, "Article ideas, missing topics and internal links. Suggestions only — nothing is published automatically.", { needs: ["ai", "sanity"] }),
+      ai("content", "AI Content Suggestions", Lightbulb, "Article ideas, missing topics and internal links. Suggestions only — nothing is published automatically.", { needs: ["ai", "content"] }),
     ],
   },
   {
