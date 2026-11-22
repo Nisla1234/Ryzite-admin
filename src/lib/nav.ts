@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 import type { Permission } from "./permissions";
 
-export const LIVE_SITE_URL = "https://ryzite-website.thulirkalcom.workers.dev/";
+export const LIVE_SITE_URL = "https://ryzite-unified-platform.ryziteonline.workers.dev/";
 
 export type IntegrationKey = "sanity" | "ga4" | "pagespeed" | "ai" | "email" | "github" | "cloudflare";
 
@@ -30,7 +30,8 @@ export type LiveRoute =
   | "/admin/access-requests"
   | "/admin/logs"
   | "/admin/integrations"
-  | "/admin/profile";
+  | "/admin/profile"
+  | "/admin/media";
 
 export interface NavItem {
   key: string;
@@ -80,13 +81,13 @@ export const NAV: NavGroup[] = [
     label: "Website Management",
     icon: PanelsTopLeft,
     items: [
-      site("pages", "Pages & Content", FileText, "Edit page sections, headings, images, links and calls to action in English, Tamil and Sinhala."),
+      site("pages", "Pages & Content", FileText, "Connect the existing Sanity CMS; full content editing screens are being integrated separately."),
       site("portfolio", "Portfolio / Projects", BriefcaseBusiness, "Approved case studies with galleries, technologies, links and SEO."),
       site("services", "Services & Solutions", Layers, "The marketing services and technology solutions: descriptions, features, benefits, FAQs and SEO.", { combines: ["Services", "Solutions"] }),
       site("team", "Team Members", Users, "Team members, roles, biographies, photos and social links."),
       site("articles", "Articles & Blog", Newspaper, "Rich-text articles with authors, categories, tags and social metadata."),
       site("testimonials", "Testimonials", MessageSquareQuote, "Verified client testimonials with company, role and display order."),
-      site("media", "Media Library", Image, "Website images from GitHub and Sanity in one place: search, preview, alt text and new uploads.", { permission: "media.manage", needs: ["sanity", "github"] }),
+      { ...site("media", "Media Library", Image, "Browse the original media assets used by the live website, with previews, search, filters and live URLs.", { permission: "media.manage", needs: ["github"] }), live: "/admin/media" },
       site("navigation", "Navigation & Footer", Menu, "Header and footer menus, company details, contact information and social links.", { combines: ["Navigation & Menus", "Site Settings"] }),
       site("enquiries", "Enquiries & Contact Messages", Mail, "Messages sent through the website's contact and quote forms.", { needs: ["email"] }),
       { key: "preview", label: "Live Website Preview", icon: Eye, summary: "See the live website on desktop, tablet and mobile without leaving the Control Centre.", permission: "dashboard.view", phase: 2, live: "/admin/preview" },
@@ -140,7 +141,7 @@ export const NAV: NavGroup[] = [
       ai("daily-report", "Daily AI Reports", Newspaper, "Daily summary grounded in connected data, including what changed in traffic and why.", { combines: ["AI Daily Report", "Traffic Insights"] }),
       ai("health", "Website Health Analysis", Pulse, "Combined GA4, PageSpeed, SEO and deployment health."),
       ai("tasks", "Priority Tasks", ClipboardList, "Tracked AI tasks with status and completion history."),
-      ai("content", "AI Content Suggestions", Lightbulb, "Article ideas, missing topics and internal links. Suggestions only — nothing is published automatically.", { needs: ["ai", "sanity"] }),
+      ai("content", "AI Content Suggestions", Lightbulb, "Article ideas, missing topics and internal links. Suggestions only — nothing is published automatically.", { needs: ["ai", "content"] }),
     ],
   },
   {

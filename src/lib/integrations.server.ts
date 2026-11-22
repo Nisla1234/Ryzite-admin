@@ -2,10 +2,10 @@ import type { IntegrationKey } from "./nav";
 import type { IntegrationCheck } from "./integrations";
 import { getD1Database, getRuntimeSecret } from "./runtime-env.server";
 
-const SANITY_PROJECT = "hnm8jy5w";
-const SANITY_DATASET = "production";
 const GITHUB_REPO = "Nisla1234/ryzite-unified-platform";
-const LIVE_URL = "https://ryzite-website.thulirkalcom.workers.dev/";
+const SANITY_PROJECT = "hnm8jy5w";
+const SANITY_DATASET = getRuntimeSecret("SANITY_DATASET") ?? "development";
+const LIVE_URL = "https://ryzite-unified-platform.ryziteonline.workers.dev/";
 const UA = "RYZITE-Control-Centre/1.0 (integration check)";
 
 const has = (name: string) => Boolean(getRuntimeSecret(name));
@@ -28,10 +28,12 @@ async function timedFetch(url: string, init: RequestInit = {}, ms = 8000) {
 }
 
 async function checkSanity(): Promise<IntegrationCheck> {
-  const missing = missingOf(["SANITY_API_TOKEN"]);
+  const token = getRuntimeSecret("SANITY_API_TOKEN");
+  const missing = token ? [] : ["SANITY_API_TOKEN"];
   const setup = [
-    "In sanity.io/manage -> project hnm8jy5w -> API -> Tokens, create an Editor token named “RYZITE Control Centre”.",
-    "Configure SANITY_API_TOKEN as a server-side secret in Cloudflare Workers (it never reaches the browser).",
+    "Use the existing Sanity project hnm8jy5w. Create or use a development dataset for migration testing; keep production unchanged until review is complete.",
+    "Set SANITY_DATASET=development and create a Sanity Editor token named “RYZITE Control Centre” in the existing project.",
+    "Configure SANITY_API_TOKEN as a server-side Cloudflare Worker secret (never expose it in the browser).",
     "Add the Control Centre origin under Sanity API -> CORS origins.",
   ];
   try {
@@ -40,6 +42,7 @@ async function checkSanity(): Promise<IntegrationCheck> {
     );
     const res = await timedFetch(
       `https://${SANITY_PROJECT}.api.sanity.io/v2024-01-01/data/query/${SANITY_DATASET}?query=${q}`,
+      { headers: token ? { Authorization: `Bearer ${token}` } : {} },
     );
     if (!res.ok) {
       return {
@@ -64,9 +67,9 @@ async function checkSanity(): Promise<IntegrationCheck> {
       capabilities: [
         { label: "Read published content", ok: true },
         {
-          label: "Save drafts and publish",
+          label: "Sanity server token configured",
           ok: canWrite,
-          ...(canWrite ? {} : { detail: "Needs SANITY_API_TOKEN configured server-side." }),
+          ...(canWrite ? { detail: "Token is available for the next CMS integration phase; the admin editing interface is not enabled yet." } : { detail: "Needs SANITY_API_TOKEN configured server-side." }),
         },
       ],
       missing,
@@ -90,9 +93,9 @@ async function checkSanity(): Promise<IntegrationCheck> {
 async function checkGithub(): Promise<IntegrationCheck> {
   const token = getRuntimeSecret("GITHUB_TOKEN");
   const setup = [
-    "Live website repo: Nisla1234/ryzite-unified-platform. Control Centre repo: Nisla1234/snap-built-web-worlds (branch chore/ryzite-d1-migration).",
+    "Live website repo: Nisla1234/ryzite-unified-platform (main). Control Centre repo: Nisla1234/Ryzite-admin.",
     "Public repository metadata can be read directly via the GitHub REST API without extra secrets.",
-    "Optional: configure a scoped GITHUB_TOKEN secret in Cloudflare Workers only if you enable private-repo reads or pull-request automation later.",
+    "The live website repository is public, so read-only status checks work without a token. If rate limits require it, configure a narrowly scoped read-only GITHUB_TOKEN; do not grant write access for CMS editing.",
   ];
   try {
     const res = await timedFetch(`https://api.github.com/repos/${GITHUB_REPO}`, {
@@ -108,13 +111,11 @@ async function checkGithub(): Promise<IntegrationCheck> {
         state: "connected",
         summary: `GitHub repository ${GITHUB_REPO} is reachable (default branch ${repo.default_branch ?? "main"}).`,
         capabilities: [
-          { label: "Read repository metadata and files", ok: true },
+          { label: "Read repository metadata", ok: true },
           {
-            label: "Propose changes as a pull request",
-            ok: Boolean(token),
-            ...(token
-              ? {}
-              : { detail: "Optional GITHUB_TOKEN not configured; manual git/GitHub sync active." }),
+            label: "Read website repository metadata",
+            ok: true,
+            ...(token ? {} : { detail: "Public repository; no token required for basic reads." }),
           },
         ],
         missing: [],
@@ -189,35 +190,75 @@ function checkPagespeed(): IntegrationCheck {
 }
 
 async function checkCloudflare(): Promise<IntegrationCheck> {
+  const token = getRuntimeSecret("CLOUDFLARE_API_TOKEN");
+  const accountId = getRuntimeSecret("CLOUDFLARE_ACCOUNT_ID");
   const missing = missingOf(["CLOUDFLARE_API_TOKEN", "CLOUDFLARE_ACCOUNT_ID"]);
   const d1Bound = getD1Database() !== null;
   const setup = [
     "In Cloudflare -> My Profile -> API Tokens, create a scoped token for Workers & D1 automation.",
-    "Save CLOUDFLARE_API_TOKEN and a single CLOUDFLARE_ACCOUNT_ID for deployment automation.",
-    "Ensure the D1 binding `DB` is linked in wrangler.jsonc before deploying to Cloudflare Workers.",
+    "Save CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID as server-side secrets.",
+    "Ensure the D1 binding DB is linked in wrangler.jsonc before deploying to Cloudflare Workers.",
   ];
   const started = Date.now();
   try {
     const res = await timedFetch(LIVE_URL, { redirect: "manual" });
     const ms = Date.now() - started;
     const up = res.status >= 200 && res.status < 400;
+
+    let tokenActive = false;
+    if (token) {
+      try {
+        const verify = await timedFetch("https://api.cloudflare.com/client/v4/user/tokens/verify", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (verify.ok) {
+          const body = (await verify.json()) as {
+            success?: boolean;
+            result?: { status?: string };
+          };
+          tokenActive = body.success === true && body.result?.status === "active";
+        }
+      } catch {
+        tokenActive = false;
+      }
+    }
+
+    const tokenInvalid = Boolean(token) && !tokenActive;
+    const state = !up || tokenInvalid
+      ? "disconnected"
+      : missing.length
+        ? "configuration_required"
+        : "connected";
+
     return {
       key: "cloudflare",
-      state: !up ? "disconnected" : missing.length ? "configuration_required" : "connected",
+      state,
       summary: up
-        ? `Live site answered in ${ms} ms (HTTP ${res.status}). ${d1Bound ? "Cloudflare D1 binding active." : "Using local Node dev store (D1 binding activates in Workers)."}`
+        ? `Live site answered in ${ms} ms (HTTP ${res.status}). ${tokenActive ? "Cloudflare API token is active." : token ? "Cloudflare API token could not be verified." : "Cloudflare API token is not configured."} ${d1Bound ? "D1 binding is available in this runtime." : "D1 binding is not available in this local runtime."}`
         : `The live website answered with HTTP ${res.status}.`,
       capabilities: [
         { label: "Live website responds", ok: up },
         {
-          label: "Cloudflare D1 database binding",
-          ok: d1Bound,
-          ...(d1Bound ? {} : { detail: "Active once deployed to Cloudflare Workers / Wrangler." }),
+          label: "Cloudflare API token is active",
+          ok: tokenActive,
+          ...(!tokenActive
+            ? { detail: token ? "Token verification failed." : "CLOUDFLARE_API_TOKEN is not configured." }
+            : {}),
         },
         {
-          label: "Read deployment history via API",
-          ok: missing.length === 0,
-          ...(missing.length ? { detail: "Needs Cloudflare deployment credentials." } : {}),
+          label: "Cloudflare account ID configured",
+          ok: Boolean(accountId),
+          ...(!accountId ? { detail: "CLOUDFLARE_ACCOUNT_ID is not configured." } : {}),
+        },
+        {
+          label: "D1 database binding",
+          ok: d1Bound,
+          ...(!d1Bound ? { detail: "The binding is available when running in the configured Cloudflare Workers environment." } : {}),
+        },
+        {
+          label: "Read deployment history",
+          ok: false,
+          detail: "Deployment history retrieval is not implemented yet.",
         },
       ],
       missing,
