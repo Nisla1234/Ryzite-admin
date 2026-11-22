@@ -58,7 +58,7 @@ function WebsiteContentPage() {
       setPublishResult(null);
       publishContent.reset();
     }
-  }, [file.data?.sha]);
+  }, [file.data?.sha, publishContent.reset]);
 
   return (
     <div className="space-y-6">
