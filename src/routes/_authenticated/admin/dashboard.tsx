@@ -31,7 +31,7 @@ export const Route = createFileRoute("/_authenticated/admin/dashboard")({
       { title: "Executive Dashboard · RYZITE Control Centre" },
       {
         name: "description",
-        content: "RYZITE website health, traffic, SEO, performance and admin activity.",
+        content: "Verified RYZITE website availability, integration readiness and administrator activity.",
       },
     ],
   }),
@@ -53,23 +53,6 @@ const TRAFFIC_METRICS = [
   "Organic traffic",
   "Social traffic",
   "AI referral traffic",
-];
-
-const INSPECTION_FINDINGS = [
-  {
-    severity: "error",
-    text: "Every page shows the same browser title, “RYZITE”, even where a better social title exists.",
-  },
-  { severity: "error", text: "No sitemap.xml — the URL returns 404." },
-  {
-    severity: "warning",
-    text: "The home page has no Open Graph (social sharing) tags or canonical URL.",
-  },
-  {
-    severity: "warning",
-    text: "Canonical URLs are missing on some inner pages (for example About).",
-  },
-  { severity: "warning", text: "No Google Analytics tag installed on the website." },
 ];
 
 function greeting() {
@@ -113,12 +96,12 @@ function Dashboard() {
     {
       label: "GA4 traffic & conversions",
       state: "missing",
-      detail: "Google Analytics not connected",
+      detail: "GA4 reporting is not configured in this dashboard yet.",
     },
-    { label: "PageSpeed & Web Vitals", state: "missing", detail: "PageSpeed not connected" },
-    { label: "SEO issues", state: "pending", detail: "Automated scan arrives in Phase 4" },
-    { label: "Deployment health", state: "pending", detail: "Arrives in Phase 8" },
-    { label: "Open recommendations", state: "pending", detail: "AI tasks arrive in Phase 7" },
+    { label: "PageSpeed & Web Vitals", state: "pending", detail: "Automated reports are not implemented yet." },
+    { label: "SEO issues", state: "pending", detail: "No automated SEO scan has been run." },
+    { label: "Deployment health", state: "pending", detail: "Deployment history is not available yet." },
+    { label: "Open recommendations", state: "pending", detail: "AI recommendations are not implemented yet." },
   ];
 
   const name = (me.profile.full_name || me.profile.username).split(" ")[0];
@@ -196,7 +179,7 @@ function Dashboard() {
             <BarChart3 className="size-4 text-electric" /> Traffic & engagement
           </span>
         }
-        description="These numbers will come only from Google Analytics 4 — nothing is estimated."
+        description="Analytics data will appear here after the GA4 reporting integration is implemented."
         actions={<Badge variant="muted">Not connected</Badge>}
       >
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
@@ -208,8 +191,7 @@ function Dashboard() {
           ))}
         </div>
         <p className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">
-          <PlugZap className="size-4" /> Connecting GA4 is part of Phase 5. Your website also needs
-          the GA4 tag installed first.
+          <PlugZap className="size-4" /> No visitor or conversion figures are displayed until a verified GA4 report is available.
         </p>
       </Panel>
 
@@ -220,7 +202,7 @@ function Dashboard() {
               <Gauge className="size-4 text-electric" /> Lighthouse performance
             </span>
           }
-          description="Real Google PageSpeed reports for the live site"
+          description="PageSpeed reports will appear here after the audit integration is implemented."
           actions={<Badge variant="muted">Not connected</Badge>}
         >
           <div className="grid grid-cols-4 gap-3">
@@ -234,7 +216,7 @@ function Dashboard() {
             ))}
           </div>
           <p className="mt-4 text-xs text-muted-foreground">
-            Scores appear after the first real test in Phase 6.
+            No performance scores are displayed because an automated PageSpeed test has not been run.
           </p>
         </Panel>
 
@@ -244,21 +226,13 @@ function Dashboard() {
               <Search className="size-4 text-electric" /> SEO health
             </span>
           }
-          description="Checked on the live site on 22 Nov 2026 — the automated scan arrives in Phase 4"
+          description="Live SEO audit status"
+          actions={<Badge variant="muted">Not scanned</Badge>}
         >
-          <ul className="space-y-2">
-            {INSPECTION_FINDINGS.map((f) => (
-              <li key={f.text} className="flex items-start gap-2.5 text-sm">
-                <Badge
-                  variant={f.severity === "error" ? "danger" : "warning"}
-                  className="mt-0.5 shrink-0 capitalize"
-                >
-                  {f.severity}
-                </Badge>
-                <span>{f.text}</span>
-              </li>
-            ))}
-          </ul>
+          <p className="text-sm text-muted-foreground">
+            An automated SEO audit has not been run from the Control Centre. No errors, warnings or
+            SEO scores are being reported here yet.
+          </p>
         </Panel>
       </div>
 
@@ -349,10 +323,10 @@ function Dashboard() {
             <ul className="space-y-2.5 text-sm">
               {[
                 { done: true, t: "Secure sign-in, roles and audit logs" },
-                { done: false, t: "Move website content into Sanity (Phase 3)" },
-                { done: false, t: "Fix page titles and add SEO tags (Phase 4)" },
-                { done: false, t: "Install GA4 and connect it (Phase 5)" },
-                { done: false, t: "Add a PageSpeed API key (Phase 6)" },
+                { done: false, t: "Connect Sanity editing and verify draft/publish permissions" },
+                { done: false, t: "Run a fresh SEO audit and review verified findings" },
+                { done: false, t: "Configure GA4 reporting and verify the property" },
+                { done: false, t: "Enable and run a PageSpeed audit" },
                 { done: false, t: "Connect a sender domain for emails" },
               ].map((i) => (
                 <li key={i.t} className="flex items-start gap-2.5">
