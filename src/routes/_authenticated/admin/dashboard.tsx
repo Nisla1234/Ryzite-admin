@@ -38,7 +38,7 @@ export const Route = createFileRoute("/_authenticated/admin/dashboard")({
   component: Dashboard,
 });
 
-const LIVE_URL = "https://ryzite-website.thulirkalcom.workers.dev/";
+const LIVE_URL = "https://ryzite-unified-platform.ryziteonline.workers.dev/";
 
 const TRAFFIC_METRICS = [
   "Total visitors",
@@ -323,7 +323,7 @@ function Dashboard() {
             <ul className="space-y-2.5 text-sm">
               {[
                 { done: true, t: "Secure sign-in, roles and audit logs" },
-                { done: false, t: "Connect a reviewed GitHub content publishing workflow" },
+                { done: false, t: "Connect the existing Sanity CMS and migrate website content safely" },
                 { done: false, t: "Run a fresh SEO audit and review verified findings" },
                 { done: false, t: "Configure GA4 reporting and verify the property" },
                 { done: false, t: "Enable and run a PageSpeed audit" },
