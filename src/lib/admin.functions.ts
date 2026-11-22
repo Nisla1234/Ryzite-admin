@@ -315,7 +315,7 @@ export const restoreUserAccess = createServerFn({ method: "POST" })
 export const checkLiveSite = createServerFn({ method: "GET" })
   .middleware([requireAdminAuth])
   .handler(async () => {
-    const url = "https://ryzite-website.thulirkalcom.workers.dev/";
+    const url = "https://ryzite-unified-platform.ryziteonline.workers.dev/";
     const started = Date.now();
     try {
       const res = await fetch(url, {
