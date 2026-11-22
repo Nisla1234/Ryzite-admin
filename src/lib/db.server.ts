@@ -56,7 +56,7 @@ function createInitialLocalStore(): LocalStore {
     users: [
       {
         id: adminId,
-        email: "admin@ryzite.com",
+        email: "ryziteonline@gmail.com",
         password_hash: PRIMARY_ADMIN_PASSWORD_HASH,
         banned_until: null,
         created_at: hoursAgo(240),
@@ -74,7 +74,7 @@ function createInitialLocalStore(): LocalStore {
         id: adminId,
         username: "ryzite_admin",
         full_name: "RYZITE Administrator",
-        email: "admin@ryzite.com",
+        email: "ryziteonline@gmail.com",
         job_title: "Super Administrator",
         avatar_url: null,
         last_sign_in_at: hoursAgo(2),
