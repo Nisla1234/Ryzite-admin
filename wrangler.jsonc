@@ -1,0 +1,14 @@
+{
+  "name": "ryzite-control-centre",
+  "compatibility_date": "2026-08-04",
+  "compatibility_flags": ["nodejs_compat"],
+  // Run `wrangler d1 create ryzite-control-centre` and set database_id before deploying to Cloudflare Workers.
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "ryzite-control-centre",
+      "database_id": "",
+      "migrations_dir": "src/db/d1-migrations"
+    }
+  ]
+}
