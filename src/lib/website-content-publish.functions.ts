@@ -42,6 +42,7 @@ async function githubRequest(token: string, path: string, init: RequestInit = {}
     type?: string;
     html_url?: string;
     ref?: string;
+    number?: number;
   };
   if (!response.ok) {
     const detail = response.status === 401 || response.status === 403
@@ -129,7 +130,7 @@ export const createWebsiteContentPullRequest = createServerFn({ method: "POST" }
             "- This is a draft pull request. No production files were changed.",
             "- Review the diff and run the website checks before merging.",
             "- The existing Cloudflare deployment pipeline remains responsible for production deployment.",
-          ].join("\\n"),
+          ].join("\n"),
         }),
       });
 
