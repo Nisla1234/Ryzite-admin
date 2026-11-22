@@ -24,7 +24,7 @@ export const Route = createFileRoute("/_authenticated/admin/website/pages")({
   component: WebsiteContentPage,
 });
 
-const LIVE_SITE = "https://ryzite-website.thulirkalcom.workers.dev/";
+const LIVE_SITE = "https://ryzite-unified-platform.ryziteonline.workers.dev/";
 
 function WebsiteContentPage() {
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
