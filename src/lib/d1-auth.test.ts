@@ -40,10 +40,10 @@ describe("RYZITE D1 & auth runtime", () => {
 
   it("signs and verifies session tokens and rejects tampered tokens", () => {
     process.env["SESSION_SECRET"] = "test-signing-secret-for-vitest-only";
-    const token = createSessionToken("user-1", "admin@ryzite.com");
+    const token = createSessionToken("user-1", "ryziteonline@gmail.com");
     const claims = verifySessionToken(token);
     expect(claims?.sub).toBe("user-1");
-    expect(claims?.email).toBe("admin@ryzite.com");
+    expect(claims?.email).toBe("ryziteonline@gmail.com");
 
     const parts = token.split(".");
     const tampered = `${parts[0]}.${parts[1]}.tampered`;
@@ -102,7 +102,7 @@ describe("RYZITE D1 & auth runtime", () => {
     }>;
 
     expect(adminRows).toHaveLength(1);
-    expect(adminRows[0]?.email).toBe("admin@ryzite.com");
+    expect(adminRows[0]?.email).toBe("ryziteonline@gmail.com");
     expect(adminRows[0]?.role).toBe("super_admin");
     expect(adminRows[0]?.password_hash).toMatch(/^scrypt:[a-f0-9]{32}:[a-f0-9]{128}$/);
 
