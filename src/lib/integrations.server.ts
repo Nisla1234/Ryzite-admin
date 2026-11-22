@@ -3,6 +3,8 @@ import type { IntegrationCheck } from "./integrations";
 import { getD1Database, getRuntimeSecret } from "./runtime-env.server";
 
 const GITHUB_REPO = "Nisla1234/ryzite-unified-platform";
+const SANITY_PROJECT = "hnm8jy5w";
+const SANITY_DATASET = getRuntimeSecret("SANITY_DATASET") ?? "development";
 const LIVE_URL = "https://ryzite-unified-platform.ryziteonline.workers.dev/";
 const UA = "RYZITE-Control-Centre/1.0 (integration check)";
 
