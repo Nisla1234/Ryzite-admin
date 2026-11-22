@@ -71,6 +71,12 @@ describe("RYZITE D1 & auth runtime", () => {
     const editorUser = editor ? await getUserById(editor.id) : null;
     expect(editorUser?.email).toBe("nislaryzite@gmail.com");
     expect(editorUser?.password_hash).toMatch(/^scrypt:[a-f0-9]{32}:[a-f0-9]{128}$/);
+    expect(editor ? await getUserRoles(editor.id) : []).toEqual(["editor"]);
+    const editor = await getProfileByUsername("editor");
+    expect(editor?.email).toBe("nislaryzite@gmail.com");
+    const editorUser = editor ? await getUserById(editor.id) : null;
+    expect(editorUser?.email).toBe("nislaryzite@gmail.com");
+    expect(editorUser?.password_hash).toMatch(/^scrypt:[a-f0-9]{32}:[a-f0-9]{128}$/);
     expect(editorUser ? verifyPassword("WrongPassword#99", editorUser.password_hash) : true).toBe(false);
     expect(editor ? await getUserRoles(editor.id) : []).toEqual(["editor"]);
     expect(await countSuperAdmins()).toBe(1);
