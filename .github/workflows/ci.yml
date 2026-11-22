@@ -19,11 +19,13 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.10.0
       - name: Install dependencies
-        run: |
-          npm cache clean --force
-          npm install --legacy-peer-deps --no-audit --no-fund --prefer-online
+        run: pnpm install --no-frozen-lockfile
       - name: Run tests
-        run: npm test
+        run: pnpm test
       - name: Build admin Worker
-        run: npm run build
+        run: pnpm build
