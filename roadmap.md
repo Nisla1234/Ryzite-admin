@@ -1,4 +1,5 @@
 # RYZITE Control Centre roadmap
+
 - [x] Phase 1 report + repo inspection (v2)
 - [x] Setup: separate Lovable app, served at site /admin/ via Worker proxy (Phase 9)
 - [x] Content route: move website content into Sanity (staging dataset first)

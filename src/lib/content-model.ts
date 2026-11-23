@@ -5,7 +5,9 @@ export type Lang = (typeof LANGS)[number];
 export const LANG_LABELS: Record<Lang, string> = { en: "English", ta: "Tamil", si: "Sinhala" };
 
 export type EntryKind = "string" | "number" | "boolean" | "null" | "emptyArray" | "emptyObject";
-export type ContentEntry = { _key: string; path: string; kind: EntryKind } & Partial<Record<Lang, string>>;
+export type ContentEntry = { _key: string; path: string; kind: EntryKind } & Partial<
+  Record<Lang, string>
+>;
 export type ContentModule = {
   _id: string;
   key: string;
@@ -20,7 +22,10 @@ function tokens(path: string): (string | number)[] {
   const out: (string | number)[] = [];
   for (const part of path.split(".")) {
     const m = part.match(/^([^[]*)((?:\[\d+\])*)$/);
-    if (!m) { out.push(part); continue; }
+    if (!m) {
+      out.push(part);
+      continue;
+    }
     if (m[1]) out.push(m[1]);
     for (const i of (m[2] ?? "").matchAll(/\[(\d+)\]/g)) out.push(Number(i[1]));
   }
@@ -29,12 +34,18 @@ function tokens(path: string): (string | number)[] {
 
 function leaf(kind: EntryKind, raw: string | undefined): unknown {
   switch (kind) {
-    case "number": return raw === undefined || raw === "" ? null : Number(raw);
-    case "boolean": return raw === "true";
-    case "null": return null;
-    case "emptyArray": return [];
-    case "emptyObject": return {};
-    default: return raw ?? "";
+    case "number":
+      return raw === undefined || raw === "" ? null : Number(raw);
+    case "boolean":
+      return raw === "true";
+    case "null":
+      return null;
+    case "emptyArray":
+      return [];
+    case "emptyObject":
+      return {};
+    default:
+      return raw ?? "";
   }
 }
 
@@ -44,11 +55,17 @@ export function rebuild(entries: ContentEntry[], lang: Lang, fallback: Lang = "e
   for (const e of entries) {
     const value = leaf(e.kind, e[lang] ?? e[fallback]);
     const t = tokens(e.path);
-    if (t.length === 0) { root = value; continue; }
+    if (t.length === 0) {
+      root = value;
+      continue;
+    }
     if (root === undefined) root = typeof t[0] === "number" ? [] : {};
     let node = root as Record<string | number, unknown>;
     t.forEach((tok, i) => {
-      if (i === t.length - 1) { node[tok] = value; return; }
+      if (i === t.length - 1) {
+        node[tok] = value;
+        return;
+      }
       if (node[tok] === undefined) node[tok] = typeof t[i + 1] === "number" ? [] : {};
       node = node[tok] as Record<string | number, unknown>;
     });

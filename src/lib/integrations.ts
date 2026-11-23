@@ -34,4 +34,12 @@ export interface IntegrationCheck {
   checkedAt: string;
 }
 
-export const INTEGRATION_ORDER: IntegrationKey[] = ["github", "sanity", "ga4", "pagespeed", "cloudflare", "ai", "email"];
+export const INTEGRATION_ORDER: IntegrationKey[] = [
+  "github",
+  "sanity",
+  "ga4",
+  "pagespeed",
+  "cloudflare",
+  "ai",
+  "email",
+];

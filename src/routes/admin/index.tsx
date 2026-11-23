@@ -1,5 +1,5 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { createFileRoute, Link, useNavigate, useRouter } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState, type FormEvent } from "react";
 import { Eye, EyeOff, Loader2, LockKeyhole, ShieldAlert, User } from "lucide-react";
@@ -44,7 +44,6 @@ export const Route = createFileRoute("/admin/")({
 function LoginPage() {
   const search = Route.useSearch();
   const navigate = useNavigate();
-  const router = useRouter();
   const queryClient = useQueryClient();
   const authStatus = useServerFn(getAuthStatus);
   const signIn = useServerFn(signInWithUsername);
@@ -82,9 +81,8 @@ function LoginPage() {
         setError(res.error);
         return;
       }
-      await queryClient.invalidateQueries();
-      await router.invalidate();
-      navigate({ href: safeRedirect(search.redirect), replace: true });
+      queryClient.clear();
+      await navigate({ href: safeRedirect(search.redirect), replace: true });
     } catch {
       setError("Something went wrong. Please try again.");
     } finally {

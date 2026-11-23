@@ -78,7 +78,14 @@ const MATRIX: Record<Role, readonly Permission[]> = {
     "deployments.view",
     "profile.manage",
   ],
-  editor: ["dashboard.view", "content.edit", "media.manage", "seo.view", "ai.view", "profile.manage"],
+  editor: [
+    "dashboard.view",
+    "content.edit",
+    "media.manage",
+    "seo.view",
+    "ai.view",
+    "profile.manage",
+  ],
   analyst: [
     "dashboard.view",
     "seo.view",

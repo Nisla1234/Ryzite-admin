@@ -8,7 +8,7 @@
       "binding": "DB",
       "database_name": "ryzite-control-centre",
       "database_id": "",
-      "migrations_dir": "src/db/d1-migrations"
-    }
-  ]
+      "migrations_dir": "src/db/d1-migrations",
+    },
+  ],
 }

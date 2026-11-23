@@ -12,7 +12,7 @@ export function useSignOut() {
     await signOut().catch(() => undefined);
     await queryClient.cancelQueries();
     queryClient.clear();
+    await navigate({ to: "/admin", replace: true });
     await router.invalidate();
-    navigate({ to: "/admin", replace: true });
   };
 }

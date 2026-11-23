@@ -9,6 +9,7 @@ import {
   Circle,
   Gauge,
   Globe,
+  Mail,
   PlugZap,
   RefreshCw,
   Search,
@@ -16,14 +17,17 @@ import {
   UserPlus,
   Users,
 } from "lucide-react";
-import { PageHeader, Panel, EmptyState } from "@/components/admin/PageHeader";
+import { EmptyState, PageHeader, Panel } from "@/components/admin/PageHeader";
 import { RobotPanel, type Signal } from "@/components/admin/RobotPanel";
+import { computeWeightedHealth } from "@/components/admin/modules/OverviewModules";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { checkLiveSite, getDashboardSummary } from "@/lib/admin.functions";
-import { actionLabel, fmtRelative } from "@/lib/format";
-import { can } from "@/lib/permissions";
 import { useMe } from "@/hooks/use-me";
+import { checkLiveSite } from "@/lib/admin.functions";
+import { actionLabel, fmtRelative } from "@/lib/format";
+import { LIVE_SITE_URL } from "@/lib/nav";
+import { can } from "@/lib/permissions";
+import { getExecutiveOverview } from "@/lib/platform.functions";
 
 export const Route = createFileRoute("/_authenticated/admin/dashboard")({
   head: () => ({
@@ -38,40 +42,6 @@ export const Route = createFileRoute("/_authenticated/admin/dashboard")({
   component: Dashboard,
 });
 
-const LIVE_URL = "https://ryzite-website.thulirkalcom.workers.dev/";
-
-const TRAFFIC_METRICS = [
-  "Total visitors",
-  "Active users",
-  "New visitors",
-  "Returning visitors",
-  "Page views",
-  "Sessions",
-  "Engagement rate",
-  "Avg. engagement time",
-  "Conversions",
-  "Organic traffic",
-  "Social traffic",
-  "AI referral traffic",
-];
-
-const INSPECTION_FINDINGS = [
-  {
-    severity: "error",
-    text: "Every page shows the same browser title, “RYZITE”, even where a better social title exists.",
-  },
-  { severity: "error", text: "No sitemap.xml — the URL returns 404." },
-  {
-    severity: "warning",
-    text: "The home page has no Open Graph (social sharing) tags or canonical URL.",
-  },
-  {
-    severity: "warning",
-    text: "Canonical URLs are missing on some inner pages (for example About).",
-  },
-  { severity: "warning", text: "No Google Analytics tag installed on the website." },
-];
-
 function greeting() {
   const h = new Date().getHours();
   return h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
@@ -80,26 +50,34 @@ function greeting() {
 function Dashboard() {
   const me = useMe();
   const checkSite = useServerFn(checkLiveSite);
-  const fetchSummary = useServerFn(getDashboardSummary);
+  const fetchOverview = useServerFn(getExecutiveOverview);
+
   const site = useQuery({
     queryKey: ["live-site"],
     queryFn: () => checkSite(),
     refetchInterval: 5 * 60_000,
   });
-  const isSuper = can(me.roles, "access.review");
 
-  const summary = useQuery({
-    queryKey: ["dashboard-summary"],
-    queryFn: () => fetchSummary(),
+  const overview = useQuery({
+    queryKey: ["executive-overview"],
+    queryFn: () => fetchOverview(),
   });
-  const activity = { data: summary.data?.activity };
-  const team = {
-    data: summary.data
-      ? { members: summary.data.members, pending: summary.data.pending }
-      : undefined,
-  };
 
+  const isSuper = can(me.roles, "access.review");
   const s = site.data;
+  const o = overview.data;
+
+  const weighted = o
+    ? computeWeightedHealth({
+        siteOnline: s?.ok,
+        pagesCrawled: o.seoSummary.pagesCrawled,
+        openErrors: o.seoSummary.openErrors,
+        openWarnings: o.seoSummary.openWarnings,
+        mobilePerfScore: o.performance.mobile?.performance_score ?? null,
+        ga4Connected: o.ga4.connected,
+      })
+    : null;
+
   const signals: Signal[] = [
     {
       label: "Website availability",
@@ -111,17 +89,44 @@ function Dashboard() {
           : `Unreachable (${s?.status ?? "error"})`,
     },
     {
-      label: "GA4 traffic & conversions",
-      state: "missing",
-      detail: "Google Analytics not connected",
+      label: "GA4 traffic & tag",
+      state: o?.ga4.connected ? (o.ga4.tagInstalled ? "ok" : "pending") : "missing",
+      detail: o?.ga4.connected
+        ? o.ga4.tagInstalled
+          ? `${o.ga4.summary.activeUsers} active users (28d)`
+          : "API connected · install gtag.js on live site"
+        : o?.ga4.tagInstalled
+          ? `Tag ${o.ga4.measurementId} found; add GA4 API credentials`
+          : "No GA4 tag or Data API credentials",
     },
-    { label: "PageSpeed & Web Vitals", state: "missing", detail: "PageSpeed not connected" },
-    { label: "SEO issues", state: "pending", detail: "Automated scan arrives in Phase 4" },
-    { label: "Deployment health", state: "pending", detail: "Arrives in Phase 8" },
-    { label: "Open recommendations", state: "pending", detail: "AI tasks arrive in Phase 7" },
+    {
+      label: "PageSpeed & Web Vitals",
+      state: o?.performance.mobile ? "ok" : "pending",
+      detail: o?.performance.mobile
+        ? `Mobile ${o.performance.mobile.performance_score}/100 · SEO ${o.performance.mobile.seo_score}/100`
+        : "Run a test in Performance -> PageSpeed",
+    },
+    {
+      label: "SEO live crawl",
+      state: o?.seoSummary.pagesCrawled ? (o.seoSummary.openErrors > 0 ? "down" : "ok") : "pending",
+      detail: o?.seoSummary.pagesCrawled
+        ? `${o.seoSummary.pagesCrawled} pages · ${o.seoSummary.openErrors} errors, ${o.seoSummary.openWarnings} warnings`
+        : "Run scan in SEO Centre -> Overview",
+    },
+    {
+      label: "Website enquiries",
+      state: "ok",
+      detail: o ? `${o.openEnquiriesCount} open (${o.unreadEnquiriesCount} unread)` : "Ready",
+    },
+    {
+      label: "AI priority tasks",
+      state: "ok",
+      detail: o ? `${o.tasks.openCount} active tasks` : "Ready",
+    },
   ];
 
   const name = (me.profile.full_name || me.profile.username).split(" ")[0];
+  const mobilePerf = o?.performance.mobile;
 
   return (
     <div className="space-y-6">
@@ -136,7 +141,7 @@ function Dashboard() {
         })}
         actions={
           <Button asChild variant="outline" className="bg-card">
-            <a href={LIVE_URL} target="_blank" rel="noreferrer">
+            <a href={LIVE_SITE_URL} target="_blank" rel="noreferrer">
               <Globe /> View live website <ArrowUpRight />
             </a>
           </Button>
@@ -144,8 +149,8 @@ function Dashboard() {
       />
 
       <div className="grid gap-6 xl:grid-cols-3">
-        <div className="xl:col-span-2">
-          <RobotPanel signals={signals} />
+        <div className="min-w-0 xl:col-span-2">
+          <RobotPanel signals={signals} healthScore={weighted?.score ?? null} />
         </div>
         <Panel
           title="Live website"
@@ -154,8 +159,11 @@ function Dashboard() {
             <Button
               size="icon"
               variant="ghost"
-              onClick={() => site.refetch()}
-              disabled={site.isFetching}
+              onClick={() => {
+                void site.refetch();
+                void overview.refetch();
+              }}
+              disabled={site.isFetching || overview.isFetching}
               aria-label="Check again"
             >
               <RefreshCw className={site.isFetching ? "animate-spin" : undefined} />
@@ -193,24 +201,74 @@ function Dashboard() {
       <Panel
         title={
           <span className="flex items-center gap-2">
-            <BarChart3 className="size-4 text-electric" /> Traffic & engagement
+            <BarChart3 className="size-4 text-electric" /> Traffic & engagement (GA4)
           </span>
         }
-        description="These numbers will come only from Google Analytics 4 — nothing is estimated."
-        actions={<Badge variant="muted">Not connected</Badge>}
+        description="Real figures from Google Analytics 4 Data API — nothing is estimated."
+        actions={
+          o?.ga4.connected ? (
+            o.ga4.tagInstalled ? (
+              <Badge variant="success">Connected</Badge>
+            ) : (
+              <Badge variant="warning">Tag missing on site</Badge>
+            )
+          ) : (
+            <Badge variant="muted">Not connected</Badge>
+          )
+        }
       >
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-          {TRAFFIC_METRICS.map((m) => (
-            <div key={m} className="rounded-xl border border-dashed bg-secondary/30 p-4">
-              <p className="text-xs text-muted-foreground">{m}</p>
-              <p className="mt-2 font-display text-2xl text-muted-foreground/60">—</p>
+        {o?.ga4.connected ? (
+          <div className="space-y-4">
+            {!o.ga4.tagInstalled && (
+              <div className="flex flex-col gap-2 rounded-xl border border-warning/40 bg-warning/10 p-3.5 text-sm sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-foreground">
+                  GA4 Data API credentials are connected, but no{" "}
+                  <code className="font-mono text-xs">gtag.js</code> measurement tag was detected on
+                  the live website — counts stay 0 until GA4 is deployed on the site.
+                </p>
+                <Button asChild size="sm" variant="outline" className="shrink-0 bg-card">
+                  <Link
+                    to="/admin/$section/$page"
+                    params={{ section: "analytics", page: "overview" }}
+                  >
+                    Check GA4 status
+                  </Link>
+                </Button>
+              </div>
+            )}
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-8">
+              {[
+                ["Total users", o.ga4.summary.totalUsers],
+                ["Active users", o.ga4.summary.activeUsers],
+                ["New visitors", o.ga4.summary.newUsers],
+                ["Returning", o.ga4.summary.returningUsers],
+                ["Page views", o.ga4.summary.pageViews],
+                ["Sessions", o.ga4.summary.sessions],
+                ["Engagement", `${o.ga4.summary.engagementRate}%`],
+                ["Conversions", o.ga4.summary.conversions],
+              ].map(([label, val]) => (
+                <div key={String(label)} className="rounded-xl bg-secondary/50 p-3.5">
+                  <p className="text-xs text-muted-foreground">{label}</p>
+                  <p className="mt-1 font-display text-2xl text-primary">{val}</p>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-        <p className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">
-          <PlugZap className="size-4" /> Connecting GA4 is part of Phase 5. Your website also needs
-          the GA4 tag installed first.
-        </p>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className="flex items-center gap-2 text-sm text-muted-foreground">
+              <PlugZap className="size-4 shrink-0" />
+              {o?.ga4.tagInstalled
+                ? `GA4 tag ${o.ga4.measurementId} found on live site; configure GA4_PROPERTY_ID, GA4_CLIENT_EMAIL and GA4_PRIVATE_KEY.`
+                : "No GA4 measurement tag detected on the live website yet and server GA4 credentials are not set."}
+            </p>
+            <Button asChild size="sm" variant="subtle">
+              <Link to="/admin/$section/$page" params={{ section: "analytics", page: "overview" }}>
+                Open GA4 Analytics
+              </Link>
+            </Button>
+          </div>
+        )}
       </Panel>
 
       <div className="grid gap-6 lg:grid-cols-2">
@@ -220,22 +278,47 @@ function Dashboard() {
               <Gauge className="size-4 text-electric" /> Lighthouse performance
             </span>
           }
-          description="Real Google PageSpeed reports for the live site"
-          actions={<Badge variant="muted">Not connected</Badge>}
+          description={
+            mobilePerf
+              ? `Latest mobile report ${fmtRelative(mobilePerf.created_at)}`
+              : "Real Google PageSpeed Insights v5 scores for the live site"
+          }
+          actions={
+            <Button asChild size="sm" variant="ghost">
+              <Link
+                to="/admin/$section/$page"
+                params={{ section: "performance", page: "overview" }}
+              >
+                {mobilePerf ? "Open report" : "Run test"}
+              </Link>
+            </Button>
+          }
         >
-          <div className="grid grid-cols-4 gap-3">
-            {["Performance", "Accessibility", "Best Practices", "SEO"].map((l) => (
-              <div key={l} className="flex flex-col items-center gap-2 text-center">
-                <div className="flex size-16 items-center justify-center rounded-full border-4 border-dashed border-muted font-display text-lg text-muted-foreground/60 sm:size-20">
-                  —
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {[
+              ["Performance", mobilePerf?.performance_score],
+              ["Accessibility", mobilePerf?.accessibility_score],
+              ["Best Practices", mobilePerf?.best_practices_score],
+              ["SEO", mobilePerf?.seo_score],
+            ].map(([l, score]) => (
+              <div key={String(l)} className="flex flex-col items-center gap-2 text-center">
+                <div
+                  className={`flex size-16 items-center justify-center rounded-full border-4 font-display text-lg sm:size-20 ${
+                    typeof score === "number"
+                      ? score >= 90
+                        ? "border-success text-success"
+                        : score >= 50
+                          ? "border-warning text-warning"
+                          : "border-destructive text-destructive"
+                      : "border-dashed border-muted text-muted-foreground/60"
+                  }`}
+                >
+                  {typeof score === "number" ? score : "—"}
                 </div>
                 <p className="text-xs text-muted-foreground">{l}</p>
               </div>
             ))}
           </div>
-          <p className="mt-4 text-xs text-muted-foreground">
-            Scores appear after the first real test in Phase 6.
-          </p>
         </Panel>
 
         <Panel
@@ -244,21 +327,50 @@ function Dashboard() {
               <Search className="size-4 text-electric" /> SEO health
             </span>
           }
-          description="Checked on the live site on 22 Nov 2026 — the automated scan arrives in Phase 4"
+          description={
+            o?.seoSummary.pagesCrawled
+              ? `Scanned ${o.seoSummary.pagesCrawled} pages · ${fmtRelative(o.seoSummary.lastCheckedAt)}`
+              : "Live multi-page SEO crawl findings"
+          }
+          actions={
+            <Button asChild size="sm" variant="ghost">
+              <Link to="/admin/$section/$page" params={{ section: "seo", page: "overview" }}>
+                SEO Centre
+              </Link>
+            </Button>
+          }
         >
-          <ul className="space-y-2">
-            {INSPECTION_FINDINGS.map((f) => (
-              <li key={f.text} className="flex items-start gap-2.5 text-sm">
-                <Badge
-                  variant={f.severity === "error" ? "danger" : "warning"}
-                  className="mt-0.5 shrink-0 capitalize"
-                >
-                  {f.severity}
-                </Badge>
-                <span>{f.text}</span>
-              </li>
-            ))}
-          </ul>
+          {o?.seoSummary.topIssues.length ? (
+            <ul className="space-y-2">
+              {o.seoSummary.topIssues.map((f) => (
+                <li key={f.id} className="flex items-start gap-2.5 text-sm">
+                  <Badge
+                    variant={f.severity === "error" ? "danger" : "warning"}
+                    className="mt-0.5 shrink-0 capitalize"
+                  >
+                    {f.severity}
+                  </Badge>
+                  <span className="min-w-0 truncate">
+                    <span className="font-mono text-xs text-muted-foreground">{f.page_path}</span>{" "}
+                    {f.title}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <div className="space-y-3 text-sm text-muted-foreground">
+              <p>
+                {o?.seoSummary.pagesCrawled
+                  ? "No open SEO errors or warnings in the latest crawl."
+                  : "Run a live website crawl in SEO Centre to inspect titles, canonicals, Open Graph, schema, and sitemap status."}
+              </p>
+              <Button asChild size="sm" variant="subtle">
+                <Link to="/admin/$section/$page" params={{ section: "seo", page: "overview" }}>
+                  Run live SEO crawl
+                </Link>
+              </Button>
+            </div>
+          )}
         </Panel>
       </div>
 
@@ -281,9 +393,9 @@ function Dashboard() {
           }
           bodyClassName="p-0"
         >
-          {activity.data && activity.data.length > 0 ? (
+          {o?.activity && o.activity.length > 0 ? (
             <ul className="divide-y">
-              {activity.data.map((a) => (
+              {o.activity.map((a) => (
                 <li key={a.id} className="flex items-center gap-3 px-5 py-3 text-sm">
                   <span
                     className={`size-2 shrink-0 rounded-full ${a.result === "success" ? "bg-success" : a.result === "blocked" ? "bg-destructive" : "bg-warning"}`}
@@ -309,51 +421,60 @@ function Dashboard() {
           )}
         </Panel>
 
-        <div className="space-y-6">
+        <div className="min-w-0 space-y-6">
           <Panel
             title={
               <span className="flex items-center gap-2">
-                <Users className="size-4 text-electric" /> Team & access
+                <Users className="size-4 text-electric" /> Team & Enquiries
               </span>
             }
           >
             <div className="grid grid-cols-2 gap-3">
               <div className="rounded-xl bg-secondary/60 p-4">
                 <p className="text-xs text-muted-foreground">Administrators</p>
-                <p className="mt-1 font-display text-3xl text-primary">
-                  {team.data?.members ?? "—"}
-                </p>
+                <p className="mt-1 font-display text-3xl text-primary">{o?.members ?? "—"}</p>
               </div>
               <div className="rounded-xl bg-secondary/60 p-4">
-                <p className="text-xs text-muted-foreground">Pending requests</p>
+                <p className="text-xs text-muted-foreground">Open enquiries</p>
                 <p className="mt-1 font-display text-3xl text-primary">
-                  {isSuper ? (team.data?.pending ?? "—") : "—"}
+                  {o?.openEnquiriesCount ?? "—"}
                 </p>
               </div>
             </div>
-            {isSuper && (
-              <Button asChild variant="subtle" className="mt-3 w-full">
-                <Link to="/admin/access-requests">
-                  <UserPlus /> Review access requests
+            <div className="mt-3 flex flex-col gap-2">
+              <Button asChild variant="subtle" className="w-full">
+                <Link to="/admin/$section/$page" params={{ section: "website", page: "enquiries" }}>
+                  <Mail /> Open enquiry inbox
                 </Link>
               </Button>
-            )}
+              {isSuper && (o?.pendingAccess ?? 0) > 0 && (
+                <Button asChild variant="outline" className="w-full">
+                  <Link to="/admin/access-requests">
+                    <UserPlus /> Review {o?.pendingAccess} access requests
+                  </Link>
+                </Button>
+              )}
+            </div>
           </Panel>
+
           <Panel
             title={
               <span className="flex items-center gap-2">
-                <ShieldCheck className="size-4 text-electric" /> Setup checklist
+                <ShieldCheck className="size-4 text-electric" /> Platform readiness
               </span>
             }
           >
             <ul className="space-y-2.5 text-sm">
               {[
-                { done: true, t: "Secure sign-in, roles and audit logs" },
-                { done: false, t: "Move website content into Sanity (Phase 3)" },
-                { done: false, t: "Fix page titles and add SEO tags (Phase 4)" },
-                { done: false, t: "Install GA4 and connect it (Phase 5)" },
-                { done: false, t: "Add a PageSpeed API key (Phase 6)" },
-                { done: false, t: "Connect a sender domain for emails" },
+                { done: true, t: "Secure sign-in, roles, D1 schema & audit logs" },
+                { done: true, t: "CMS modules, media inventory & enquiries endpoint" },
+                {
+                  done: Boolean(o?.seoSummary.pagesCrawled),
+                  t: "Live multi-page SEO crawl executed",
+                },
+                { done: Boolean(mobilePerf), t: "PageSpeed Insights Lighthouse test stored" },
+                { done: Boolean(o?.ga4.tagInstalled), t: "Install GA4 measurement tag on website" },
+                { done: Boolean(o?.ga4.connected), t: "Connect GA4 Data API credentials" },
               ].map((i) => (
                 <li key={i.t} className="flex items-start gap-2.5">
                   {i.done ? (

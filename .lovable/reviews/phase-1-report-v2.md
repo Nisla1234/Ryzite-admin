@@ -27,31 +27,31 @@ The Control Centre can't edit content that only exists in code files. There are 
 ## Blocker (resolved): repository access
 
 `github.com/Nisla1234/ryzite-unified-platform` is **private**. I cannot read it from here (GitHub returns 404 to unauthenticated requests).
-Following the brief's rule, I have **not** invented its architecture. Everything below comes from the **live website** and the **public Sanity API**. Sections that need the code are marked *"needs repo"*.
+Following the brief's rule, I have **not** invented its architecture. Everything below comes from the **live website** and the **public Sanity API**. Sections that need the code are marked _"needs repo"_.
 
 Two platform facts that shape the plan:
 
-- **Lovable cannot open a branch or push to an existing GitHub repo.** Lovable's GitHub sync only creates a *new* repository for this project. So `feature/ryzite-control-centre` in your existing repo cannot be created from here.
+- **Lovable cannot open a branch or push to an existing GitHub repo.** Lovable's GitHub sync only creates a _new_ repository for this project. So `feature/ryzite-control-centre` in your existing repo cannot be created from here.
 - **This project runs on React (TanStack Start), not Astro.** It is hosted on Lovable's own Cloudflare-based hosting, not on your `thulirkalcom` Workers account.
 
 ---
 
 ## 1. Existing project architecture (what can be seen from outside)
 
-| Item | Finding |
-|---|---|
-| Framework | **Astro v7.4.2** (`<meta name="generator">`) |
-| Hosting | Cloudflare Workers (`server: cloudflare`, `*.workers.dev`) |
-| Fonts | Fira Sans, Fira Sans Extra Condensed, Noto Sans Tamil, Noto Sans Sinhala |
+| Item                         | Finding                                                                                                                                           |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Framework                    | **Astro v7.4.2** (`<meta name="generator">`)                                                                                                      |
+| Hosting                      | Cloudflare Workers (`server: cloudflare`, `*.workers.dev`)                                                                                        |
+| Fonts                        | Fira Sans, Fira Sans Extra Condensed, Noto Sans Tamil, Noto Sans Sinhala                                                                          |
 | Brand tokens (from site CSS) | brand `#0b1c58`, brand-hover `#16296f`, heading `#0a1734`, body `#24334f`, ink `#080c11`, paper `#fdfff5`, lime accent `#c9ff57`, lilac `#d3b8ff` |
-| Logo | `/Original Logo.png` (matches the uploaded logo: chrome-blue serif "Ryzite" with a rising arrow) |
-| `/admin/` | Already serves a page titled **"Ryzite Content Studio"** (probably an embedded Sanity Studio — *needs repo* to confirm) |
-| `/admin/dashboard/` | 404 |
+| Logo                         | `/Original Logo.png` (matches the uploaded logo: chrome-blue serif "Ryzite" with a rising arrow)                                                  |
+| `/admin/`                    | Already serves a page titled **"Ryzite Content Studio"** (probably an embedded Sanity Studio — _needs repo_ to confirm)                           |
+| `/admin/dashboard/`          | 404                                                                                                                                               |
 
 ## 2. Website routes (from live navigation)
 
 `/`, `/about`, `/services` (+11 service pages), `/solutions` (+9 solution pages), `/our-work`, `/articles`, `/packages`, `/how-we-work`, `/contact`, `/privacy-policy/`, `/terms-and-conditions/`.
-Components visible in CSS bundles: `MainLayout`, `Offerings`, `ProcessRoad`, `TrustPrinciples`. Full component list: *needs repo*.
+Components visible in CSS bundles: `MainLayout`, `Offerings`, `ProcessRoad`, `TrustPrinciples`. Full component list: _needs repo_.
 
 ## 3. Sanity schemas and documents
 
@@ -60,11 +60,11 @@ Public query against project `hnm8jy5w` / `production`:
 - `count(*)` → **2**
 - Document types → only `sanity.imageAsset`
 
-**This is the most important finding.** Either the dataset is private (needs a read token to see documents), or the website's pages, services and solutions are **written directly in the Astro code, not in Sanity**. If it is the second, the Control Centre cannot edit the live site through Sanity until that content is moved into Sanity and the Astro pages are changed to read from it. Schemas: *needs repo*.
+**This is the most important finding.** Either the dataset is private (needs a read token to see documents), or the website's pages, services and solutions are **written directly in the Astro code, not in Sanity**. If it is the second, the Control Centre cannot edit the live site through Sanity until that content is moved into Sanity and the Astro pages are changed to read from it. Schemas: _needs repo_.
 
 ## 4. Cloudflare deployment
 
-Worker on `ryzite-website.thulirkalcom.workers.dev`. Wrangler config, bindings (D1/KV/R2), and deploy scripts: *needs repo*.
+Worker on `ryzite-website.thulirkalcom.workers.dev`. Wrangler config, bindings (D1/KV/R2), and deploy scripts: _needs repo_.
 
 ## 5. Recommended integration strategy
 
@@ -90,16 +90,16 @@ Exactly as brief section 4 (Overview, Website Management, SEO Centre, Analytics 
 
 ## 7. Required configuration (secret names only)
 
-| Name | Purpose |
-|---|---|
-| `SANITY_API_TOKEN` | Editor token for project `hnm8jy5w` (read drafts, write, upload assets) |
-| `GA4_PROPERTY_ID` | GA4 property number |
-| `GOOGLE_SERVICE_ACCOUNT_JSON` | Service account with Viewer on the GA4 property |
-| `PAGESPEED_API_KEY` | Google Cloud key with PageSpeed Insights API enabled |
-| AI | Built-in Lovable AI (no key needed) |
-| Email | Lovable's built-in email (needs a sender domain) for password reset and access-request notices |
-| `ADMIN_BOOTSTRAP_PASSWORD` | One-time initial password for `ryzite_admin`, entered through the secure form only |
-| Optional: `GITHUB_TOKEN`, Cloudflare API token | Read-only deployment status |
+| Name                                           | Purpose                                                                                        |
+| ---------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| `SANITY_API_TOKEN`                             | Editor token for project `hnm8jy5w` (read drafts, write, upload assets)                        |
+| `GA4_PROPERTY_ID`                              | GA4 property number                                                                            |
+| `GOOGLE_SERVICE_ACCOUNT_JSON`                  | Service account with Viewer on the GA4 property                                                |
+| `PAGESPEED_API_KEY`                            | Google Cloud key with PageSpeed Insights API enabled                                           |
+| AI                                             | Built-in Lovable AI (no key needed)                                                            |
+| Email                                          | Lovable's built-in email (needs a sender domain) for password reset and access-request notices |
+| `ADMIN_BOOTSTRAP_PASSWORD`                     | One-time initial password for `ryzite_admin`, entered through the secure form only             |
+| Optional: `GITHUB_TOKEN`, Cloudflare API token | Read-only deployment status                                                                    |
 
 ## 8. Missing integrations and credentials
 
@@ -119,14 +119,14 @@ Exactly as brief section 4 (Overview, Website Management, SEO Centre, Analytics 
 
 ## 10. Roadmap
 
-| Phase | Work |
-|---|---|
-| 1 | This report ✅ + repo inspection once access is available |
-| 2 | Design system from the logo, branded login, request access, forgot password, roles (Super Admin/Admin/Editor/Analyst), audit log, sidebar with all modules |
-| 3 | Sanity connection: pages, services, solutions, portfolio, team, articles, testimonials, media (drafts + publish) |
-| 4 | SEO Centre: validation, search preview, AI suggestions inbox, apply-to-draft / publish / revert |
-| 5 | GA4: overview, acquisition, social, AI referrals, geo, devices, events |
-| 6 | PageSpeed: 4 score rings, Core Web Vitals (field vs lab), audits, history, scheduled tests |
-| 7 | AI Intelligence + RYZITE Robot (weighted health score, 5 moods, daily report history) |
-| 8 | Integrations, deployment status, settings, profile |
-| 9 | Proxy `/admin/*` on your Worker, test report, your approval before going live |
+| Phase | Work                                                                                                                                                       |
+| ----- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1     | This report ✅ + repo inspection once access is available                                                                                                  |
+| 2     | Design system from the logo, branded login, request access, forgot password, roles (Super Admin/Admin/Editor/Analyst), audit log, sidebar with all modules |
+| 3     | Sanity connection: pages, services, solutions, portfolio, team, articles, testimonials, media (drafts + publish)                                           |
+| 4     | SEO Centre: validation, search preview, AI suggestions inbox, apply-to-draft / publish / revert                                                            |
+| 5     | GA4: overview, acquisition, social, AI referrals, geo, devices, events                                                                                     |
+| 6     | PageSpeed: 4 score rings, Core Web Vitals (field vs lab), audits, history, scheduled tests                                                                 |
+| 7     | AI Intelligence + RYZITE Robot (weighted health score, 5 moods, daily report history)                                                                      |
+| 8     | Integrations, deployment status, settings, profile                                                                                                         |
+| 9     | Proxy `/admin/*` on your Worker, test report, your approval before going live                                                                              |

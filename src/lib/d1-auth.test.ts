@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { randomBytes } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -10,6 +11,7 @@ import {
   verifyPassword,
   verifySessionToken,
 } from "./auth-crypto.server";
+import { buildSessionCookieOptions, detectHttpsFromHeaders } from "./auth-session.server";
 import {
   countProfiles,
   countSuperAdmins,
@@ -50,6 +52,34 @@ describe("RYZITE D1 & auth runtime", () => {
     expect(verifySessionToken(tampered)).toBeNull();
   });
 
+  it("detects HTTPS behind reverse proxies and configures HttpOnly cookies safely", () => {
+    expect(detectHttpsFromHeaders("https", null)).toBe(true);
+    expect(
+      detectHttpsFromHeaders("http", new Headers({ "x-forwarded-proto": "https, http" })),
+    ).toBe(true);
+    expect(detectHttpsFromHeaders("http", new Headers({ origin: "https://example.run.app" }))).toBe(
+      true,
+    );
+    expect(detectHttpsFromHeaders("http", new Headers({ origin: "http://localhost:3000" }))).toBe(
+      false,
+    );
+
+    expect(buildSessionCookieOptions(true)).toMatchObject({
+      httpOnly: true,
+      secure: true,
+      sameSite: "none",
+      partitioned: true,
+      path: "/",
+    });
+    expect(buildSessionCookieOptions(false)).toEqual({
+      httpOnly: true,
+      secure: false,
+      sameSite: "lax",
+      maxAge: 86_400,
+      path: "/",
+    });
+  });
+
   it("hashes opaque reset tokens deterministically with sha256", () => {
     const a = hashOpaqueToken("sample-token");
     const b = hashOpaqueToken("sample-token");
@@ -71,13 +101,9 @@ describe("RYZITE D1 & auth runtime", () => {
     const editorUser = editor ? await getUserById(editor.id) : null;
     expect(editorUser?.email).toBe("nislaryzite@gmail.com");
     expect(editorUser?.password_hash).toMatch(/^scrypt:[a-f0-9]{32}:[a-f0-9]{128}$/);
-    expect(editor ? await getUserRoles(editor.id) : []).toEqual(["editor"]);
-    const editor = await getProfileByUsername("editor");
-    expect(editor?.email).toBe("nislaryzite@gmail.com");
-    const editorUser = editor ? await getUserById(editor.id) : null;
-    expect(editorUser?.email).toBe("nislaryzite@gmail.com");
-    expect(editorUser?.password_hash).toMatch(/^scrypt:[a-f0-9]{32}:[a-f0-9]{128}$/);
-    expect(editorUser ? verifyPassword("WrongPassword#99", editorUser.password_hash) : true).toBe(false);
+    expect(editorUser ? verifyPassword("WrongPassword#99", editorUser.password_hash) : true).toBe(
+      false,
+    );
     expect(editor ? await getUserRoles(editor.id) : []).toEqual(["editor"]);
     expect(await countSuperAdmins()).toBe(1);
     expect(await countProfiles()).toBeGreaterThanOrEqual(2);
@@ -86,17 +112,25 @@ describe("RYZITE D1 & auth runtime", () => {
   });
 
   it("applies D1 schema and 0001_seed_admin migration idempotently without duplicates", () => {
-    const initSql = readFileSync(resolve(process.cwd(), "src/db/d1-migrations/0000_init.sql"), "utf8");
+    const initSql = readFileSync(
+      resolve(process.cwd(), "src/db/d1-migrations/0000_init.sql"),
+      "utf8",
+    );
     const seedSql = readFileSync(
       resolve(process.cwd(), "src/db/d1-migrations/0001_seed_admin.sql"),
+      "utf8",
+    );
+    const updateEmailSql = readFileSync(
+      resolve(process.cwd(), "src/db/d1-migrations/0002_update_primary_admin_email.sql"),
       "utf8",
     );
 
     const db = new DatabaseSync(":memory:");
     db.exec(initSql);
-    // Run seed migration twice to verify idempotency and no duplicate super_admin accounts
     db.exec(seedSql);
     db.exec(seedSql);
+    db.exec(updateEmailSql);
+    db.exec(updateEmailSql);
 
     const adminRows = db
       .prepare(
@@ -135,10 +169,12 @@ describe("RYZITE D1 & auth runtime", () => {
     expect(ga4.missing).toEqual(["GA4_PROPERTY_ID", "GA4_CLIENT_EMAIL", "GA4_PRIVATE_KEY"]);
 
     const pagespeed = await runCheck("pagespeed");
-    expect(pagespeed.state).toBe("planned");
+    expect(pagespeed.state).toBe("connected");
 
+    delete process.env["GEMINI_API_KEY"];
+    delete process.env["OPENAI_API_KEY"];
     const ai = await runCheck("ai");
-    expect(ai.state).toBe("planned");
-    expect(ai.missing).toEqual([]);
+    expect(ai.state).toBe("configuration_required");
+    expect(ai.missing).toEqual(["GEMINI_API_KEY or OPENAI_API_KEY"]);
   });
 });

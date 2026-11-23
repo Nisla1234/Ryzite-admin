@@ -146,19 +146,53 @@ async function checkGithub(): Promise<IntegrationCheck> {
   }
 }
 
-function checkGa4(): IntegrationCheck {
+async function checkGa4(): Promise<IntegrationCheck> {
   const missing = missingOf(["GA4_PROPERTY_ID", "GA4_CLIENT_EMAIL", "GA4_PRIVATE_KEY"]);
+  let tagFound = false;
+  let tagId: string | null = null;
+  try {
+    const res = await timedFetch(LIVE_URL, {}, 5000);
+    if (res.ok) {
+      const html = await res.text();
+      const match =
+        /googletagmanager\.com\/gtag\/js\?id=(G-[A-Z0-9]+)|gtag\(\s*['"]config['"]\s*,\s*['"](G-[A-Z0-9]+)['"]/i.exec(
+          html,
+        );
+      tagId = match?.[1] ?? match?.[2] ?? null;
+      tagFound = Boolean(tagId);
+    }
+  } catch {
+    tagFound = false;
+  }
+
   return {
     key: "ga4",
-    state: missing.length ? "configuration_required" : "planned",
+    state: missing.length
+      ? "configuration_required"
+      : tagFound
+        ? "connected"
+        : "configuration_required",
     summary: missing.length
-      ? "No Google Analytics credentials are saved, and the live website has no GA4 tag yet. No traffic numbers are shown anywhere until this is connected."
-      : "Credentials are saved. The GA4 reporting screens arrive in a later phase.",
+      ? tagFound
+        ? `GA4 tag (${tagId}) is present on the live site, but server-side GA4 Data API credentials are still missing.`
+        : "No Google Analytics Data API credentials are saved, and the live website has no GA4 measurement tag yet."
+      : tagFound
+        ? `GA4 Data API credentials saved and measurement tag ${tagId} detected on the live site.`
+        : "GA4 Data API credentials saved, but the live website still needs a GA4 measurement tag (G-...) installed.",
     capabilities: [
       {
-        label: "Read GA4 reports",
-        ok: false,
-        detail: missing.length ? "Credentials missing." : "Reporting not built yet.",
+        label: "Live website GA4 tag installed",
+        ok: tagFound,
+        ...(tagFound && tagId
+          ? { detail: `Detected ${tagId}` }
+          : { detail: "No gtag.js script found in HTML." }),
+      },
+      {
+        label: "Read GA4 Data API reports",
+        ok: missing.length === 0,
+        ...(missing.length
+          ? { detail: "Needs GA4_PROPERTY_ID, GA4_CLIENT_EMAIL, GA4_PRIVATE_KEY." }
+          : {}),
       },
     ],
     missing,
@@ -166,24 +200,36 @@ function checkGa4(): IntegrationCheck {
       "In Google Analytics, open (or create) the RYZITE web property and copy its numeric Property ID.",
       "In Google Cloud, create a service account, enable the “Google Analytics Data API”, and create a JSON key.",
       "In GA4 -> Admin -> Property access management, add the service account email as a Viewer.",
-      "Save GA4_PROPERTY_ID, GA4_CLIENT_EMAIL and GA4_PRIVATE_KEY as server-side secrets.",
+      "Save GA4_PROPERTY_ID, GA4_CLIENT_EMAIL and GA4_PRIVATE_KEY as server-side secrets, and install the G-... tag on the Astro site.",
     ],
     checkedAt: now(),
   };
 }
 
-function checkPagespeed(): IntegrationCheck {
+async function checkPagespeed(): Promise<IntegrationCheck> {
   const keyed = has("PAGESPEED_API_KEY");
+  const setup = [
+    "In Google Cloud, enable the PageSpeed Insights API and create an API key.",
+    "Save it as the server-side secret PAGESPEED_API_KEY for higher scheduled quota.",
+  ];
   return {
     key: "pagespeed",
-    state: "planned",
-    summary: `Lighthouse reports arrive in a later phase. ${keyed ? "An API key is saved." : "Google's service works without a key at low volume; a key is recommended for scheduled reports."}`,
-    capabilities: [{ label: "Run Lighthouse reports", ok: false, detail: "Not built yet." }],
-    missing: keyed ? [] : ["PAGESPEED_API_KEY (optional)"],
-    setup: [
-      "In Google Cloud, enable the PageSpeed Insights API and create an API key.",
-      "Save it as the server-side secret PAGESPEED_API_KEY.",
+    state: "connected",
+    summary: keyed
+      ? "PageSpeed Insights v5 API is ready with PAGESPEED_API_KEY configured."
+      : "PageSpeed Insights v5 API is available for on-demand live tests (add optional PAGESPEED_API_KEY for higher quota).",
+    capabilities: [
+      { label: "Run live Lighthouse mobile & desktop audits", ok: true },
+      {
+        label: "Dedicated PageSpeed API quota key",
+        ok: keyed,
+        ...(keyed
+          ? {}
+          : { detail: "Optional PAGESPEED_API_KEY not set; subject to public IP limits." }),
+      },
     ],
+    missing: keyed ? [] : ["PAGESPEED_API_KEY (optional)"],
+    setup,
     checkedAt: now(),
   };
 }
@@ -239,35 +285,58 @@ async function checkCloudflare(): Promise<IntegrationCheck> {
 }
 
 function checkAi(): IntegrationCheck {
+  const hasGemini = has("GEMINI_API_KEY");
+  const hasOpenai = has("OPENAI_API_KEY");
+  const configured = hasGemini || hasOpenai;
   return {
     key: "ai",
-    state: "planned",
-    summary:
-      "AI reporting and recommendations are scheduled for Phase 7 using direct server-side provider integration. No reports publish automatically.",
+    state: configured ? "connected" : "configuration_required",
+    summary: configured
+      ? `AI synthesis active via ${hasGemini ? "Google Gemini" : "OpenAI"}. All recommendations require administrator review before publishing.`
+      : "No generative AI API key configured. Rule-based telemetry diagnostics work now; add GEMINI_API_KEY or OPENAI_API_KEY for LLM reports and drafts.",
     capabilities: [
-      { label: "Generate reports and suggestions", ok: false, detail: "Scheduled for Phase 7." },
+      { label: "Telemetry-grounded diagnostics & task triage", ok: true },
+      {
+        label: "Generative LLM synthesis & content drafting",
+        ok: configured,
+        ...(configured ? {} : { detail: "Needs GEMINI_API_KEY or OPENAI_API_KEY server-side." }),
+      },
     ],
-    missing: [],
+    missing: configured ? [] : ["GEMINI_API_KEY or OPENAI_API_KEY"],
     setup: [
-      "AI recommendation workflows will be configured directly on Cloudflare Workers in Phase 7.",
+      "Create an API key in Google AI Studio (GEMINI_API_KEY) or OpenAI (OPENAI_API_KEY).",
+      "Save it as a server-side Cloudflare Worker secret.",
     ],
     checkedAt: now(),
   };
 }
 
 function checkEmail(): IntegrationCheck {
+  const hasResend = has("RESEND_API_KEY");
+  const hasFrom = has("EMAIL_FROM");
+  const configured = hasResend && hasFrom;
   return {
     key: "email",
-    state: "planned",
-    summary:
-      "Transactional email delivery for password resets, invitations and alerts will use a verified domain sender in a later phase.",
+    state: configured ? "connected" : "configuration_required",
+    summary: configured
+      ? "Transactional email provider configured alongside Cloudflare D1 enquiry storage."
+      : "Website enquiries and password reset tokens are stored in Cloudflare D1. Add RESEND_API_KEY and EMAIL_FROM for outbound email delivery.",
     capabilities: [
-      { label: "Password reset token management", ok: true, detail: "Handled in Cloudflare D1." },
-      { label: "Branded alerts and email delivery", ok: false, detail: "Not built yet." },
+      {
+        label: "Enquiry inbox & password reset tokens",
+        ok: true,
+        detail: "Handled in Cloudflare D1.",
+      },
+      {
+        label: "Outbound transactional email delivery",
+        ok: configured,
+        ...(configured ? {} : { detail: "Needs RESEND_API_KEY and verified EMAIL_FROM sender." }),
+      },
     ],
-    missing: [],
+    missing: configured ? [] : missingOf(["RESEND_API_KEY", "EMAIL_FROM"]),
     setup: [
-      "Verify a domain you own (for example ryzite.com) with your transactional email provider.",
+      "Verify a domain you own (for example ryzite.lk) with Resend.",
+      "Save RESEND_API_KEY and EMAIL_FROM as server-side secrets.",
     ],
     checkedAt: now(),
   };

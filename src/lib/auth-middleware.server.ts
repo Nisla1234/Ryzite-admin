@@ -1,5 +1,11 @@
 import { createMiddleware } from "@tanstack/react-start";
-import { deleteCookie, getCookie, getRequest, getRequestProtocol, setCookie } from "@tanstack/react-start/server";
+import {
+  deleteCookie,
+  getCookie,
+  getRequest,
+  getRequestProtocol,
+  setCookie,
+} from "@tanstack/react-start/server";
 import { verifySessionToken } from "./auth-crypto.server";
 import { getProfileById, getUserById, getUserRoles } from "./db.server";
 import { isRole, type Role } from "./permissions";

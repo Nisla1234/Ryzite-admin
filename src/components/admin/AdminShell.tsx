@@ -57,12 +57,6 @@ function NavLink({ groupKey, item, active }: { groupKey: string; item: NavItem; 
     <>
       <Icon />
       <span className="truncate">{item.label}</span>
-      {!item.live && (
-        <span
-          className="ml-auto size-1.5 shrink-0 rounded-full bg-sidebar-foreground/30"
-          aria-label="Coming in a later phase"
-        />
-      )}
     </>
   );
   return (
@@ -282,7 +276,7 @@ export function AdminShell({ me, children }: { me: Me; children: ReactNode }) {
   return (
     <SidebarProvider style={{ "--sidebar-width": "17rem" } as CSSProperties}>
       <AppSidebar me={me} />
-      <SidebarInset className={cn("min-w-0 bg-background")}>
+      <SidebarInset className={cn("min-w-0 overflow-x-hidden bg-background")}>
         <Header me={me} />
         <div className="mx-auto w-full max-w-[1400px] flex-1 px-4 py-6 md:px-8 md:py-8">
           {children}

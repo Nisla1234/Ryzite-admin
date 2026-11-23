@@ -8,12 +8,22 @@ export function initials(name: string, fallback = "R") {
   return ((parts[0]?.[0] ?? "") + (parts[1]?.[0] ?? "")).toUpperCase();
 }
 
-export function UserAvatar({ path, name, className }: { path: string | null | undefined; name: string; className?: string }) {
+export function UserAvatar({
+  path,
+  name,
+  className,
+}: {
+  path: string | null | undefined;
+  name: string;
+  className?: string;
+}) {
   const { data: url } = useAvatarUrl(path);
   return (
     <Avatar className={cn("size-9 ring-2 ring-background", className)}>
       {url && <AvatarImage src={url} alt={name} className="object-cover" />}
-      <AvatarFallback className="bg-gradient-brand text-xs font-semibold text-primary-foreground">{initials(name)}</AvatarFallback>
+      <AvatarFallback className="bg-gradient-brand text-xs font-semibold text-primary-foreground">
+        {initials(name)}
+      </AvatarFallback>
     </Avatar>
   );
 }
