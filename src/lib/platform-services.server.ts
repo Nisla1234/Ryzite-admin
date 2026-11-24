@@ -667,6 +667,25 @@ export async function runRealPageSpeed(
   targetUrl: string,
   strategy: "mobile" | "desktop",
 ): Promise<PageSpeedReportRecord> {
+  // Google applies a daily quota to the whole Cloud project/API key. Once a 429 is
+  // recorded, do not keep spending requests by retrying on every administrator click.
+  // Reuse the recorded quota response for 24 hours; no Google request is made in that window.
+  const latestReports = await listPageSpeedReports(1);
+  const latestReport = latestReports[0];
+  const quotaCooldownMs = 24 * 60 * 60 * 1000;
+  if (
+    latestReport?.error?.includes("PageSpeed API HTTP 429") &&
+    Date.now() - new Date(latestReport.created_at).getTime() < quotaCooldownMs
+  ) {
+    return {
+      ...latestReport,
+      url: targetUrl,
+      strategy,
+      error:
+        "Google PageSpeed daily quota was exceeded. Further API requests are paused for 24 hours to prevent repeated quota failures. Please retry after the quota resets or review the Google Cloud PageSpeed API quota.",
+    };
+  }
+
   const apiKey = getRuntimeSecret("PAGESPEED_API_KEY");
   const params = new URLSearchParams({
     url: targetUrl,
